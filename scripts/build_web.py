@@ -22,6 +22,8 @@ if OUT.exists():
 for f in ["app.js", "static.js", "style.css"]:
     shutil.copy(ROOT / "web" / f, OUT / f)
 shutil.copytree(ROOT / "web" / "vendor", OUT / "vendor")
+if (ROOT / "web" / "pitch").exists():
+    shutil.copytree(ROOT / "web" / "pitch", OUT / "pitch")
 html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
 html = html.replace('<script src="app.js"></script>', '<script src="static.js"></script>\n<script src="app.js"></script>')
 (OUT / "index.html").write_text(html, encoding="utf-8")

@@ -1,0 +1,18 @@
+{
+  "v": 4,
+  "createdOnFiles": { "v": 1, "at": "2026-10-23T18:20:00Z" },
+  "lists": "css",
+  "title": "Белгі: питч для SafeNet KZ",
+  "cover": "cover",
+  "order": ["cover", "problem", "solution", "how", "explain", "precise", "links", "results", "pilot"],
+  "sections": {
+    "s1": { "description": "Проблема и наше решение", "start": "cover" },
+    "s2": { "description": "Как Белгі находит и объясняет признаки", "start": "how" },
+    "s3": { "description": "Результаты и план пилота", "start": "results" }
+  },
+  "faces": {
+    "unbounded": { "family": "Unbounded", "href": "https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&display=swap" },
+    "inter": { "family": "Inter", "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" }
+  },
+  "designSystems": []
+}

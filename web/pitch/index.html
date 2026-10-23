@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Белгі: питч для SafeNet KZ</title>
+<meta name="description" content="Презентация проекта Белгі для хакатона SafeNet KZ: признаки незаконных розыгрышей, рекламы казино и финансовых пирамид в соцсетях Казахстана.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #070c18; overflow: hidden; font-family: Inter, Arial, sans-serif; }
+  #viewport { position: fixed; inset: 0; }
+  #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  .slide { position: absolute; inset: 0; display: none; }
+  .slide.on { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .slide > section { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+  .slide h1, .slide h2, .slide h3, .slide p { margin: 0; }
+  .slide img, .slide svg { display: block; }
+  .slide table { width: 100%; border-collapse: collapse; overflow: hidden; }
+  .slide th, .slide td { padding: 14px 22px; text-align: left; vertical-align: top; border-bottom: 1px solid #E1E6EF; }
+  .slide aside { display: none; }
+  #bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; align-items: center;
+    background: rgba(15, 23, 42, .78); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12); border-radius: 999px;
+    padding: 6px 8px; color: #dbe4f5; font-size: 14px; z-index: 5; transition: opacity .3s; }
+  #bar button, #bar a { background: none; border: 0; color: #dbe4f5; font: inherit; cursor: pointer; padding: 6px 10px; border-radius: 999px; text-decoration: none; }
+  #bar button:hover, #bar a:hover { background: rgba(255,255,255,.12); }
+  #count { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
+  #notes { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(900px, 92vw); max-height: 40vh; overflow: auto;
+    background: rgba(15, 23, 42, .92); color: #e6ecf7; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px 18px;
+    font-size: 16px; line-height: 1.5; display: none; z-index: 6; }
+  #notes.on { display: block; }
+  #rotate { position: fixed; inset: auto 12px 64px 12px; text-align: center; color: #b8c4da; font-size: 13px; display: none; }
+  @media (orientation: portrait) and (max-width: 700px) { #rotate { display: block; } }
+  body.idle #bar { opacity: 0; }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+<div class="slide" data-id="cover"><section id="cover" data-transition="fade" style="background:radial-gradient(circle at 88% 6%, #24408F 0%, #0E1628 54%);color:#F4F6FA;font-family:Inter, Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center">
+<div style="width:820px;display:flex;flex-direction:column;align-items:start;gap:32px">
+<p style="font-size:24px;font-weight:600;color:#B9CCFF;background:#1A2848;border:1px solid #2E4372;padding:10px 22px;border-radius:999px">Хакатон SafeNet KZ, Шымкент 2026</p>
+<h1 style="font-family:Unbounded, Arial, sans-serif;font-size:120px;font-weight:700;line-height:1;letter-spacing:-2px;color:#F4F6FA">Белгі</h1>
+<p style="font-size:40px;font-weight:500;line-height:1.3;color:#E6ECF7">Находит признаки незаконных розыгрышей, скрытой рекламы казино и финансовых пирамид в соцсетях Казахстана</p>
+<p style="font-size:30px;line-height:1.4;color:#B8C4DA">Каждый вывод с цитатой, источником и нормой закона. Решение остаётся за специалистом.</p>
+<p style="font-size:30px;font-weight:600;color:#8FB0FF">belgi-kz.pages.dev</p>
+</div>
+<img src="img/img_app.png" alt="Панель аналитика Белгі: очередь публикаций и разбор кейса" style="position:absolute;left:1000px;top:292px;width:792px;height:495px;object-fit:cover;border-radius:20px;border:1px solid #2E4372;box-shadow:0 30px 80px rgba(0, 0, 0, 0.45)">
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#8A97B1">[Название команды и участники]</p>
+<aside>Здравствуйте, мы команда [название]. Белгі по-казахски значит «признак». Наша система находит в соцсетях и мессенджерах признаки всех трёх схем из задания: платных розыгрышей, скрытой рекламы казино и финансовых пирамид. И объясняет каждый случай. Всё, что вы увидите, работает по ссылке на слайде прямо сейчас, с любого телефона.</aside>
+</section>
+</div>
+<div class="slide" data-id="problem"><section id="problem" data-transition="fade" style="background:#F4F6FA;color:#0F1A2E;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:44px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#1D4ED8">ПРОБЛЕМА</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#0F1A2E">Схемы ушли в соцсети,<br>вручную их уже не догнать</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:34px 40px;display:flex;flex-direction:column;gap:10px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#6D28D9">3,1 млрд ₸</p>
+<p style="font-size:30px;line-height:1.35;color:#4A5568">оборот онлайн-казино Bingo-37 и Lotoboom в Шымкенте, игроков звали через WhatsApp</p>
+</div>
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:34px 40px;display:flex;flex-direction:column;gap:10px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#0F766E">32,9 млрд ₸</p>
+<p style="font-size:30px;line-height:1.35;color:#4A5568">ущерб от финансовых пирамид за 2025 год: 53 пирамиды, 112 500 вкладчиков</p>
+</div>
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:34px 40px;display:flex;flex-direction:column;gap:10px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#6D28D9">75 000</p>
+<p style="font-size:30px;line-height:1.35;color:#4A5568">сайтов онлайн-казино заблокировано за 2025 год, а зеркала появляются снова</p>
+</div>
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:34px 40px;display:flex;flex-direction:column;gap:10px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#B45309">121</p>
+<p style="font-size:30px;line-height:1.35;color:#4A5568">человек оштрафован за незаконные розыгрыши в соцсетях за 2025 год</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1400px;font-size:24px;color:#5B6576">Источники: Kursiv, 09.10.2026; Казахстанская правда, 12.03.2026 и 09.01.2026; Lada.kz, 01.07.2026</p>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#5B6576">02</p>
+<aside>Схемы переехали в Instagram, Telegram и WhatsApp. Свежий пример прямо из Шымкента: онлайн-казино с оборотом 3,1 миллиарда тенге, игроков звали через WhatsApp. Только за 2025 год пирамиды нанесли ущерб почти на 33 миллиарда тенге, заблокировано 75 тысяч сайтов казино, оштрафован 121 организатор розыгрышей. Схемы меняют форму быстрее, чем их успевают проверять вручную.</aside>
+</section>
+</div>
+<div class="slide" data-id="solution"><section id="solution" data-transition="fade" style="background:#0E1628;color:#F4F6FA;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#8FB0FF">РЕШЕНИЕ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#F4F6FA">Один движок на три направления. Признаки, а не вердикты</h2>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;background:#17223B;border:1px solid #26334F;border-radius:20px;padding:36px;display:flex;flex-direction:column;gap:20px">
+<div style="width:76px;height:76px;border-radius:20px;background:#FDE7BF;display:flex;align-items:center;justify-content:center">
+<svg aria-label="Билет" width="24" height="24" viewBox="0 0 24 24" style="width:44px;height:44px" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7.5v9" stroke-dasharray="2 2.2"/></svg>
+</div>
+<h3 style="font-size:40px;font-weight:600;line-height:1.2;color:#F4F6FA">Розыгрыши с платным участием</h3>
+<p style="font-size:30px;line-height:1.4;color:#B8C4DA">Взнос за номер, перевод на Kaspi, рандомайзер в эфире</p>
+</div>
+<div style="flex:1;background:#17223B;border:1px solid #26334F;border-radius:20px;padding:36px;display:flex;flex-direction:column;gap:20px">
+<div style="width:76px;height:76px;border-radius:20px;background:#E6DBFF;display:flex;align-items:center;justify-content:center">
+<svg aria-label="Кубик" width="24" height="24" viewBox="0 0 24 24" style="width:44px;height:44px" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3" fill="#6D28D9"/><circle cx="15" cy="15" r="1.3" fill="#6D28D9"/><circle cx="15" cy="9" r="1.3" fill="#6D28D9"/><circle cx="9" cy="15" r="1.3" fill="#6D28D9"/></svg>
+</div>
+<h3 style="font-size:40px;font-weight:600;line-height:1.2;color:#F4F6FA">Скрытая реклама казино</h3>
+<p style="font-size:30px;line-height:1.4;color:#B8C4DA">Промокоды, ссылки-зеркала, «вчера поднял», ссылка в шапке</p>
+</div>
+<div style="flex:1;background:#17223B;border:1px solid #26334F;border-radius:20px;padding:36px;display:flex;flex-direction:column;gap:20px">
+<div style="width:76px;height:76px;border-radius:20px;background:#C6ECE5;display:flex;align-items:center;justify-content:center">
+<svg aria-label="Пирамида" width="24" height="24" viewBox="0 0 24 24" style="width:44px;height:44px" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3 20h18z"/><path d="M7.6 12h8.8M5.3 16h13.4"/></svg>
+</div>
+<h3 style="font-size:40px;font-weight:600;line-height:1.2;color:#F4F6FA">Финансовые пирамиды</h3>
+<p style="font-size:30px;line-height:1.4;color:#B8C4DA">Доходность выше рынка, гарантии, бонус за приглашённых</p>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:24px;background:#13203A;border:1px solid #2B3C63;border-radius:16px;padding:24px 32px">
+<svg aria-label="Щит" width="24" height="24" viewBox="0 0 24 24" style="width:44px;height:44px" fill="none" stroke="#8FB0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+<p style="font-size:30px;line-height:1.35;color:#E6ECF7">Система показывает признаки возможного нарушения. Законность проверяет специалист с учётом законодательства РК</p>
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#8A97B1">03</p>
+<aside>Мы сделали один движок сразу на три трека задания, потому что признаки у схем во многом общие: реквизиты Kaspi, срочность, ссылки, скриншоты выплат, сети связанных аккаунтов. Главный принцип совпадает с принципом хакатона: система не обвиняет. Она показывает признаки и объясняет, на чём они основаны, а решение принимает специалист.</aside>
+</section>
+</div>
+<div class="slide" data-id="how"><section id="how" data-transition="fade" style="background:#F4F6FA;color:#0F1A2E;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:44px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#1D4ED8">КАК РАБОТАЕТ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#0F1A2E">Пять шагов от публикации до справки</h2>
+</div>
+<div style="display:flex;gap:20px">
+<div style="flex:1;background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px">
+<p style="width:56px;height:56px;border-radius:28px;background:#1D4ED8;color:#FDFEFF;font-size:28px;font-weight:700;line-height:2;text-align:center">1</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2;color:#0F1A2E">Собирает</h3>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Публичные Telegram-каналы, автопоиск по цепочке, жалобы со скриншотами</p>
+</div>
+<div style="flex:1;background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px">
+<p style="width:56px;height:56px;border-radius:28px;background:#1D4ED8;color:#FDFEFF;font-size:28px;font-weight:700;line-height:2;text-align:center">2</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2;color:#0F1A2E">Очищает</h3>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Снимает маскировку вроде к@зино и 1w1n. Русский, казахский, транслит</p>
+</div>
+<div style="flex:1;background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px">
+<p style="width:56px;height:56px;border-radius:28px;background:#1D4ED8;color:#FDFEFF;font-size:28px;font-weight:700;line-height:2;text-align:center">3</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2;color:#0F1A2E">Находит признаки</h3>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Словари, расчёт доходности и сбора, реквизиты, ссылки, текст со скриншотов и эфиров</p>
+</div>
+<div style="flex:1;background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px">
+<p style="width:56px;height:56px;border-radius:28px;background:#1D4ED8;color:#FDFEFF;font-size:28px;font-weight:700;line-height:2;text-align:center">4</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2;color:#0F1A2E">Уточняет</h3>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Спорные случаи разбирает LLM. Признак без дословной цитаты отбрасывается</p>
+</div>
+<div style="flex:1;background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px">
+<p style="width:56px;height:56px;border-radius:28px;background:#1D4ED8;color:#FDFEFF;font-size:28px;font-weight:700;line-height:2;text-align:center">5</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2;color:#0F1A2E">Связывает</h3>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">Общие карты, телефоны и промокоды у разных аккаунтов</p>
+</div>
+</div>
+<div style="background:#0E1628;border-radius:20px;padding:30px 40px;display:flex;align-items:center;gap:24px">
+<p style="font-size:24px;font-weight:700;letter-spacing:2px;color:#8FB0FF;white-space:nowrap">НА ВЫХОДЕ</p>
+<p style="font-size:30px;line-height:1.35;color:#F4F6FA">Уровень риска по трём направлениям, подсвеченные цитаты, нормы закона и справка для ведомства одной кнопкой</p>
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#5B6576">04</p>
+<aside>Система собирает публикации из открытых источников: публичные Telegram-каналы, автопоиск по цепочке каналов и жалобы граждан со скриншотами. Сначала снимает маскировку, потом ищет признаки: словари на трёх языках, расчёты, реквизиты и ссылки. Спорные случаи уточняет языковая модель, но признак без дословной цитаты из текста она добавить не может. В конце строится граф связей.</aside>
+</section>
+</div>
+<div class="slide" data-id="explain"><section id="explain" data-transition="fade" style="background:#0E1628;color:#F4F6FA;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#8FB0FF">ОБЪЯСНИМОСТЬ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#F4F6FA">Каждый вывод с цитатой и нормой</h2>
+</div>
+<div style="display:flex;gap:48px;align-items:start">
+<div style="width:600px;display:flex;flex-direction:column;gap:22px">
+<p style="font-size:24px;font-weight:600;color:#8A97B1">Скриншот из жалобы гражданина</p>
+<div style="background:#17223B;border:1px solid #26334F;border-left:6px solid #2DD4BF;border-radius:16px;padding:26px 30px">
+<p style="font-size:30px;line-height:1.4;color:#F4F6FA">«Вложи 5000 тг, получи 10 000 тг через 24 часа! Гарантия 100%. Кидай на каспи»</p>
+</div>
+<p style="font-size:24px;font-weight:600;color:#8A97B1">Что показала система</p>
+<p style="font-size:32px;font-weight:700;color:#F87171">Высокий риск, 100 из 100</p>
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:44px;font-weight:700;line-height:1.1;color:#F4F6FA">≈ 3 000% в месяц</p>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">в 1 765 раз выше ставок по вкладам</p>
+</div>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">Основание: методика АФМ № 82-НҚ, пункты 3.1.1, 3.1.2 и 3.1.15</p>
+</div>
+<img src="img/img_case.png" alt="Карточка кейса в Белгі: высокий риск, обещанная доходность около 3000 процентов в месяц, состав признаков пирамиды" style="width:1016px;height:575px;object-fit:contain;border-radius:16px;border:1px solid #2E4372;background:#FDFEFF;box-shadow:0 24px 60px rgba(0, 0, 0, 0.4)">
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#8A97B1">05</p>
+<aside>Вот как выглядит объяснение. На входе скриншот из WhatsApp-группы, который прислал гражданин. Система сама распознала текст, нашла обещание «вложи 5000, получи 10 000 через сутки» и посчитала: это около 3000 процентов в месяц, в 1765 раз выше ставок по вкладам. Рядом с каждым признаком цитата и пункт методики АФМ. Аналитику не нужно перечитывать весь чат.</aside>
+</section>
+</div>
+<div class="slide" data-id="precise"><section id="precise" data-transition="fade" style="background:#F4F6FA;color:#0F1A2E;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#1D4ED8">МИНИМУМ ЛОЖНЫХ СРАБАТЫВАНИЙ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#0F1A2E">Обычный конкурс не попадёт в выборку</h2>
+</div>
+<table style="font-family:Inter, Arial, sans-serif;font-size:30px;color:#0F1A2E;border:1px solid #DDE3EC;border-radius:16px">
+<tr style="background:#E6ECF5"><th style="width:49%;padding:16px 24px">Публикация</th><th style="width:37%">Что увидела система</th><th style="width:14%">Уровень</th></tr>
+<tr style="background:#FDFEFF"><td>«Разыгрываем 3 сертификата. Условия: подписка и лайк, участие бесплатное»</td><td>Случайный выбор есть, платы за участие нет</td><td style="color:#475467"><b>Низкий</b></td></tr>
+<tr style="background:#F7F9FC"><td>«Участие 1000 тг = 1 номер, всего 300 номеров, оплата на Kaspi, итоги в эфире»</td><td>Плата, перевод на личный счёт, сбор до 300&#160;000&#160;₸</td><td style="color:#DC2626"><b>Высокий</b></td></tr>
+<tr style="background:#FDFEFF"><td>«Депозит до 19,5% годовых, вклады гарантированы КФГД»</td><td>Ставка в рынке, банк с лицензией</td><td style="color:#475467"><b>Низкий</b></td></tr>
+<tr style="background:#F7F9FC"><td>«АФМ выявило пирамиду: обещали 30% в месяц»</td><td>Новость, нет реквизитов и призыва</td><td style="color:#475467"><b>Низкий</b></td></tr>
+<tr style="background:#FDFEFF"><td>«К а з и н о дает, деп 5к, вывел 200к, зеркал0 в шапке»</td><td>Маскировка снята, лексика казино, призыв</td><td style="color:#DC2626"><b>Высокий</b></td></tr>
+</table>
+<p style="position:absolute;left:128px;bottom:64px;width:1400px;font-size:24px;color:#5B6576">Казахская частица «деп» не путается с казиношным «деп», а «занос мебели» с «заносом» в казино</p>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#5B6576">06</p>
+<aside>Главная сложность первого трека: отличить обычный конкурс от платной схемы. Мы считаем признаки так, как их описывает закон о лотереях: плата за участие, случайный выбор и приз вместе. Бесплатный конкурс с рандомайзером остаётся низким, и система прямо пишет почему. Так же отсекаются банковские вклады, официальная лотерея, легальный букмекер и новости о схемах. А замаскированное «к а з и н о» система, наоборот, узнаёт.</aside>
+</section>
+</div>
+<div class="slide" data-id="links"><section id="links" data-transition="fade" style="background:#0E1628;color:#F4F6FA;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:36px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#8FB0FF">СВЯЗИ И СКРИНШОТЫ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#F4F6FA">Видит сеть за разными аккаунтами</h2>
+</div>
+<div style="display:flex;gap:48px;align-items:start">
+<img src="img/img_graph.png" alt="Граф связей: аккаунты соединены общими картами, телефонами, промокодом и ссылкой" style="width:960px;height:624px;object-fit:contain;border-radius:16px;border:1px solid #2E4372;background:#FBFCFE">
+<div style="flex:1;display:flex;flex-direction:column;gap:30px">
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:44px;font-weight:700;line-height:1.1;color:#8FB0FF">3 аккаунта</p>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">с одной картой Kaspi проводят платные розыгрыши</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:44px;font-weight:700;line-height:1.1;color:#8FB0FF">3 блогера</p>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">с одним промокодом казино LUCKY500</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:44px;font-weight:700;line-height:1.1;color:#8FB0FF">OCR</p>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">читает скриншоты чатов и выплат на казахском и русском</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:44px;font-weight:700;line-height:1.1;color:#8FB0FF">6:52</p>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">минута эфира, где прозвучало «Lucky Jet», сразу видна в карточке</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#8A97B1">07</p>
+<aside>Схемы редко живут на одной странице. Система связывает аккаунты, у которых совпадает номер карты, телефон, промокод или контакт «куратора». В демо-ленте видно, как одна карта Kaspi объединяет три страницы с платными розыгрышами, а один промокод казино трёх блогеров. Номера при этом хранятся только хешем. Кроме текста система читает скриншоты и транскрипции эфиров с точной минутой.</aside>
+</section>
+</div>
+<div class="slide" data-id="results"><section id="results" data-transition="fade" style="background:#F4F6FA;color:#0F1A2E;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#1D4ED8">РЕЗУЛЬТАТЫ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#0F1A2E">Что уже работает</h2>
+</div>
+<div style="display:flex;gap:48px;align-items:start">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:30px 34px;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#15803D">0 из 16</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">ложных срабатываний на трудных случаях демо-ленты</p>
+</div>
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:30px 34px;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#1D4ED8">0,02 с</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">проверка 10 публикаций прямо в браузере, на любом устройстве</p>
+</div>
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:30px 34px;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#1D4ED8">1,5 с</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">разбор спорного случая облачной LLM, только для небольшой доли публикаций</p>
+</div>
+<div style="background:#FDFEFF;border:1px solid #E1E6EF;border-radius:20px;padding:30px 34px;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:700;line-height:1.1;color:#1D4ED8">3 с</p>
+<p style="font-size:26px;line-height:1.35;color:#4A5568">чтение публичного Telegram-канала вместе с картинками</p>
+</div>
+</div>
+<div style="background:#FFF7E8;border:1px solid #F5D9A8;border-radius:16px;padding:22px 30px">
+<p style="font-size:26px;line-height:1.4;color:#7C2D12"><b>Честно о цифрах:</b> демо-лента синтетическая, 34 публикации. Следующий шаг: тест на реальных публикациях, собранный другими людьми, с оценкой по каждому языку.</p>
+</div>
+</div>
+<img src="img/img_phone.png" alt="Белгі на телефоне: карточка розыгрыша с высоким риском и сбором организатора до 3 миллионов тенге" style="width:292px;height:632px;object-fit:cover;border-radius:36px;border:8px solid #0E1628;box-shadow:0 24px 60px rgba(14, 22, 40, 0.25)">
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#5B6576">08</p>
+<aside>Что уже работает. На трудных случаях демо-ленты, то есть бесплатных конкурсах, банке, официальной лотерее и новостях, ни одного ложного срабатывания. Десять публикаций проверяются за сотые доли секунды прямо в браузере, поэтому система масштабируется: дешёвые правила проверяют всё, а языковая модель включается только на спорных. Честно говорим: лента синтетическая, следующий шаг это проверка на реальных публикациях.</aside>
+</section>
+</div>
+<div class="slide" data-id="pilot"><section id="pilot" data-transition="fade" style="background:radial-gradient(circle at 92% 100%, #1F3B86 0%, #0E1628 55%);color:#F4F6FA;font-family:Inter, Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:36px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;color:#8FB0FF">ВНЕДРЕНИЕ</p>
+<h2 style="font-family:Unbounded, Arial, sans-serif;font-size:60px;font-weight:600;line-height:1.15;color:#F4F6FA">Пилот с АФМ и Комитетом<br>по игорному бизнесу</h2>
+</div>
+<div style="display:flex;gap:56px;align-items:start">
+<div style="flex:1;display:flex;flex-direction:column;gap:30px">
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:56px;height:56px;border-radius:28px;background:#2F6BFF;color:#F4F6FA;font-size:28px;font-weight:700;line-height:2;text-align:center">1</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:34px;font-weight:700;line-height:1.2;color:#F4F6FA">Подключить источники</h3>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">Публичные каналы и жалобы граждан из бота и колл-центра 1458</p>
+</div>
+</div>
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:56px;height:56px;border-radius:28px;background:#2F6BFF;color:#F4F6FA;font-size:28px;font-weight:700;line-height:2;text-align:center">2</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:34px;font-weight:700;line-height:1.2;color:#F4F6FA">Сверять с реестрами</h3>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">Перечень нелегальных организаторов с merchant ID и список пирамид АФМ</p>
+</div>
+</div>
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:56px;height:56px;border-radius:28px;background:#2F6BFF;color:#F4F6FA;font-size:28px;font-weight:700;line-height:2;text-align:center">3</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:34px;font-weight:700;line-height:1.2;color:#F4F6FA">Работать внутри периметра</h3>
+<p style="font-size:26px;line-height:1.35;color:#B8C4DA">Модель Qwen3.5 Kazakh от ISSAI на сервере ведомства, данные не уходят наружу. Номера карт и телефонов хранятся только хешем</p>
+</div>
+</div>
+</div>
+<div style="width:460px;background:#F4F6FA;border-radius:24px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:10px">
+<svg aria-label="QR-код на сайт belgi-kz.pages.dev" width="31" height="31" viewBox="0 0 31 31" style="width:300px;height:300px"><rect x="0" y="0" width="31" height="31" fill="#F4F6FA"/><path fill="#0E1628" d="M1,1H2V2H1zM2,1H3V2H2zM3,1H4V2H3zM4,1H5V2H4zM5,1H6V2H5zM6,1H7V2H6zM7,1H8V2H7zM9,1H10V2H9zM13,1H14V2H13zM14,1H15V2H14zM15,1H16V2H15zM16,1H17V2H16zM19,1H20V2H19zM21,1H22V2H21zM23,1H24V2H23zM24,1H25V2H24zM25,1H26V2H25zM26,1H27V2H26zM27,1H28V2H27zM28,1H29V2H28zM29,1H30V2H29zM1,2H2V3H1zM7,2H8V3H7zM12,2H13V3H12zM13,2H14V3H13zM16,2H17V3H16zM18,2H19V3H18zM19,2H20V3H19zM21,2H22V3H21zM23,2H24V3H23zM29,2H30V3H29zM1,3H2V4H1zM3,3H4V4H3zM4,3H5V4H4zM5,3H6V4H5zM7,3H8V4H7zM9,3H10V4H9zM10,3H11V4H10zM12,3H13V4H12zM13,3H14V4H13zM14,3H15V4H14zM18,3H19V4H18zM19,3H20V4H19zM21,3H22V4H21zM23,3H24V4H23zM25,3H26V4H25zM26,3H27V4H26zM27,3H28V4H27zM29,3H30V4H29zM1,4H2V5H1zM3,4H4V5H3zM4,4H5V5H4zM5,4H6V5H5zM7,4H8V5H7zM10,4H11V5H10zM13,4H14V5H13zM16,4H17V5H16zM17,4H18V5H17zM18,4H19V5H18zM19,4H20V5H19zM21,4H22V5H21zM23,4H24V5H23zM25,4H26V5H25zM26,4H27V5H26zM27,4H28V5H27zM29,4H30V5H29zM1,5H2V6H1zM3,5H4V6H3zM4,5H5V6H4zM5,5H6V6H5zM7,5H8V6H7zM10,5H11V6H10zM12,5H13V6H12zM16,5H17V6H16zM17,5H18V6H17zM18,5H19V6H18zM19,5H20V6H19zM23,5H24V6H23zM25,5H26V6H25zM26,5H27V6H26zM27,5H28V6H27zM29,5H30V6H29zM1,6H2V7H1zM7,6H8V7H7zM9,6H10V7H9zM10,6H11V7H10zM11,6H12V7H11zM13,6H14V7H13zM14,6H15V7H14zM15,6H16V7H15zM17,6H18V7H17zM19,6H20V7H19zM21,6H22V7H21zM23,6H24V7H23zM29,6H30V7H29zM1,7H2V8H1zM2,7H3V8H2zM3,7H4V8H3zM4,7H5V8H4zM5,7H6V8H5zM6,7H7V8H6zM7,7H8V8H7zM9,7H10V8H9zM11,7H12V8H11zM13,7H14V8H13zM15,7H16V8H15zM17,7H18V8H17zM19,7H20V8H19zM21,7H22V8H21zM23,7H24V8H23zM24,7H25V8H24zM25,7H26V8H25zM26,7H27V8H26zM27,7H28V8H27zM28,7H29V8H28zM29,7H30V8H29zM10,8H11V9H10zM11,8H12V9H11zM12,8H13V9H12zM13,8H14V9H13zM14,8H15V9H14zM21,8H22V9H21zM1,9H2V10H1zM3,9H4V10H3zM7,9H8V10H7zM8,9H9V10H8zM12,9H13V10H12zM13,9H14V10H13zM14,9H15V10H14zM16,9H17V10H16zM17,9H18V10H17zM20,9H21V10H20zM21,9H22V10H21zM24,9H25V10H24zM27,9H28V10H27zM29,9H30V10H29zM1,10H2V11H1zM2,10H3V11H2zM4,10H5V11H4zM6,10H7V11H6zM9,10H10V11H9zM10,10H11V11H10zM11,10H12V11H11zM13,10H14V11H13zM17,10H18V11H17zM20,10H21V11H20zM21,10H22V11H21zM23,10H24V11H23zM24,10H25V11H24zM28,10H29V11H28zM29,10H30V11H29zM3,11H4V12H3zM4,11H5V12H4zM7,11H8V12H7zM9,11H10V12H9zM10,11H11V12H10zM14,11H15V12H14zM15,11H16V12H15zM17,11H18V12H17zM18,11H19V12H18zM20,11H21V12H20zM22,11H23V12H22zM26,11H27V12H26zM27,11H28V12H27zM29,11H30V12H29zM1,12H2V13H1zM2,12H3V13H2zM5,12H6V13H5zM8,12H9V13H8zM13,12H14V13H13zM15,12H16V13H15zM16,12H17V13H16zM17,12H18V13H17zM19,12H20V13H19zM20,12H21V13H20zM21,12H22V13H21zM22,12H23V13H22zM24,12H25V13H24zM26,12H27V13H26zM1,13H2V14H1zM2,13H3V14H2zM3,13H4V14H3zM7,13H8V14H7zM13,13H14V14H13zM14,13H15V14H14zM15,13H16V14H15zM20,13H21V14H20zM21,13H22V14H21zM22,13H23V14H22zM23,13H24V14H23zM24,13H25V14H24zM29,13H30V14H29zM2,14H3V15H2zM4,14H5V15H4zM5,14H6V15H5zM9,14H10V15H9zM10,14H11V15H10zM11,14H12V15H11zM12,14H13V15H12zM14,14H15V15H14zM15,14H16V15H15zM19,14H20V15H19zM20,14H21V15H20zM21,14H22V15H21zM23,14H24V15H23zM24,14H25V15H24zM28,14H29V15H28zM29,14H30V15H29zM2,15H3V16H2zM3,15H4V16H3zM4,15H5V16H4zM7,15H8V16H7zM8,15H9V16H8zM9,15H10V16H9zM10,15H11V16H10zM13,15H14V16H13zM16,15H17V16H16zM20,15H21V16H20zM24,15H25V16H24zM25,15H26V16H25zM29,15H30V16H29zM1,16H2V17H1zM3,16H4V17H3zM5,16H6V17H5zM6,16H7V17H6zM10,16H11V17H10zM14,16H15V17H14zM22,16H23V17H22zM24,16H25V17H24zM25,16H26V17H25zM3,17H4V18H3zM4,17H5V18H4zM7,17H8V18H7zM9,17H10V18H9zM10,17H11V18H10zM11,17H12V18H11zM12,17H13V18H12zM13,17H14V18H13zM14,17H15V18H14zM16,17H17V18H16zM17,17H18V18H17zM19,17H20V18H19zM20,17H21V18H20zM21,17H22V18H21zM23,17H24V18H23zM24,17H25V18H24zM29,17H30V18H29zM3,18H4V19H3zM5,18H6V19H5zM6,18H7V19H6zM8,18H9V19H8zM11,18H12V19H11zM13,18H14V19H13zM17,18H18V19H17zM18,18H19V19H18zM20,18H21V19H20zM21,18H22V19H21zM23,18H24V19H23zM24,18H25V19H24zM27,18H28V19H27zM28,18H29V19H28zM29,18H30V19H29zM1,19H2V20H1zM2,19H3V20H2zM3,19H4V20H3zM4,19H5V20H4zM6,19H7V20H6zM7,19H8V20H7zM8,19H9V20H8zM11,19H12V20H11zM14,19H15V20H14zM15,19H16V20H15zM17,19H18V20H17zM20,19H21V20H20zM21,19H22V20H21zM22,19H23V20H22zM25,19H26V20H25zM26,19H27V20H26zM29,19H30V20H29zM4,20H5V21H4zM8,20H9V21H8zM9,20H10V21H9zM11,20H12V21H11zM12,20H13V21H12zM13,20H14V21H13zM15,20H16V21H15zM16,20H17V21H16zM17,20H18V21H17zM19,20H20V21H19zM22,20H23V21H22zM23,20H24V21H23zM24,20H25V21H24zM1,21H2V22H1zM2,21H3V22H2zM5,21H6V22H5zM7,21H8V22H7zM9,21H10V22H9zM10,21H11V22H10zM12,21H13V22H12zM13,21H14V22H13zM14,21H15V22H14zM15,21H16V22H15zM18,21H19V22H18zM19,21H20V22H19zM20,21H21V22H20zM21,21H22V22H21zM22,21H23V22H22zM23,21H24V22H23zM24,21H25V22H24zM25,21H26V22H25zM26,21H27V22H26zM28,21H29V22H28zM9,22H10V23H9zM10,22H11V23H10zM14,22H15V23H14zM15,22H16V23H15zM18,22H19V23H18zM20,22H21V23H20zM21,22H22V23H21zM25,22H26V23H25zM26,22H27V23H26zM27,22H28V23H27zM29,22H30V23H29zM1,23H2V24H1zM2,23H3V24H2zM3,23H4V24H3zM4,23H5V24H4zM5,23H6V24H5zM6,23H7V24H6zM7,23H8V24H7zM9,23H10V24H9zM16,23H17V24H16zM21,23H22V24H21zM23,23H24V24H23zM25,23H26V24H25zM29,23H30V24H29zM1,24H2V25H1zM7,24H8V25H7zM14,24H15V25H14zM18,24H19V25H18zM20,24H21V25H20zM21,24H22V25H21zM25,24H26V25H25zM28,24H29V25H28zM29,24H30V25H29zM1,25H2V26H1zM3,25H4V26H3zM4,25H5V26H4zM5,25H6V26H5zM7,25H8V26H7zM10,25H11V26H10zM12,25H13V26H12zM14,25H15V26H14zM16,25H17V26H16zM17,25H18V26H17zM18,25H19V26H18zM20,25H21V26H20zM21,25H22V26H21zM22,25H23V26H22zM23,25H24V26H23zM24,25H25V26H24zM25,25H26V26H25zM26,25H27V26H26zM28,25H29V26H28zM1,26H2V27H1zM3,26H4V27H3zM4,26H5V27H4zM5,26H6V27H5zM7,26H8V27H7zM10,26H11V27H10zM11,26H12V27H11zM17,26H18V27H17zM21,26H22V27H21zM22,26H23V27H22zM25,26H26V27H25zM26,26H27V27H26zM27,26H28V27H27zM28,26H29V27H28zM1,27H2V28H1zM3,27H4V28H3zM4,27H5V28H4zM5,27H6V28H5zM7,27H8V28H7zM9,27H10V28H9zM11,27H12V28H11zM13,27H14V28H13zM17,27H18V28H17zM18,27H19V28H18zM19,27H20V28H19zM25,27H26V28H25zM28,27H29V28H28zM29,27H30V28H29zM1,28H2V29H1zM7,28H8V29H7zM14,28H15V29H14zM15,28H16V29H15zM16,28H17V29H16zM17,28H18V29H17zM19,28H20V29H19zM21,28H22V29H21zM23,28H24V29H23zM25,28H26V29H25zM26,28H27V29H26zM1,29H2V30H1zM2,29H3V30H2zM3,29H4V30H3zM4,29H5V30H4zM5,29H6V30H5zM6,29H7V30H6zM7,29H8V30H7zM9,29H10V30H9zM12,29H13V30H12zM13,29H14V30H13zM14,29H15V30H14zM15,29H16V30H15zM18,29H19V30H18zM19,29H20V30H19zM20,29H21V30H20zM21,29H22V30H21zM22,29H23V30H22zM24,29H25V30H24zM25,29H26V30H25zM26,29H27V30H26zM29,29H30V30H29z"/></svg>
+<p style="font-size:30px;font-weight:700;color:#0F1A2E">Попробуйте сами</p>
+<p style="font-size:28px;font-weight:600;color:#1D4ED8">belgi-kz.pages.dev</p>
+<p style="font-size:24px;line-height:1.35;color:#4A5568;text-align:center">Исходный код на GitHub muhammedzhan-otter/belgi</p>
+</div>
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:120px;font-size:24px;text-align:right;color:#8A97B1">09</p>
+<aside>Мы предлагаем пилот с АФМ и Комитетом по регулированию игорного бизнеса. Подключаем публичные каналы и жалобы граждан, сверяем найденное с официальными реестрами. Для ведомства система работает целиком внутри периметра: казахская модель ISSAI на своём сервере, персональные данные не хранятся. Наведите камеру на QR-код и проверьте сами прямо сейчас. Спасибо!</aside>
+</section>
+</div>
+</div></div>
+<div id="notes"></div>
+<div id="rotate">Поверните телефон горизонтально, так слайды будут крупнее</div>
+<div id="bar">
+  <button id="prev" aria-label="Назад">&#8592;</button>
+  <span id="count"></span>
+  <button id="next" aria-label="Вперёд">&#8594;</button>
+  <button id="notesBtn" title="Заметки выступающего (N)">Заметки</button>
+  <button id="fs" title="Во весь экран (F)">Во весь экран</button>
+  <a href="/" title="Открыть Белгі">Открыть Белгі</a>
+</div>
+<script>
+const slides = [...document.querySelectorAll(".slide")];
+const stage = document.getElementById("stage");
+let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1)) || 1) - 1));
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  stage.style.transformOrigin = "50% 50%";
+  stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+}
+function show(n) {
+  i = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, k) => s.classList.toggle("on", k === i));
+  document.getElementById("count").textContent = `${i + 1} / ${slides.length}`;
+  const a = slides[i].querySelector("aside");
+  document.getElementById("notes").textContent = a ? a.textContent : "";
+  history.replaceState(null, "", "#" + (i + 1));
+}
+document.getElementById("prev").onclick = () => show(i - 1);
+document.getElementById("next").onclick = () => show(i + 1);
+document.getElementById("notesBtn").onclick = () => document.getElementById("notes").classList.toggle("on");
+document.getElementById("fs").onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+addEventListener("keydown", (e) => {
+  if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); show(i + 1); }
+  if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); show(i - 1); }
+  if (e.key === "Home") show(0);
+  if (e.key === "End") show(slides.length - 1);
+  if (e.key.toLowerCase() === "n" || e.key === "т") document.getElementById("notes").classList.toggle("on");
+  if (e.key.toLowerCase() === "f" || e.key === "а") document.getElementById("fs").click();
+});
+let x0 = null;
+addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+addEventListener("touchend", (e) => {
+  if (x0 === null) return;
+  const dx = e.changedTouches[0].clientX - x0;
+  if (Math.abs(dx) > 40) show(i + (dx < 0 ? 1 : -1));
+  x0 = null;
+});
+document.getElementById("viewport").addEventListener("click", (e) => {
+  if (e.target.closest("a")) return;
+  show(i + (e.clientX > innerWidth / 3 ? 1 : -1));
+});
+let idle;
+addEventListener("mousemove", () => { document.body.classList.remove("idle"); clearTimeout(idle); idle = setTimeout(() => document.body.classList.add("idle"), 2500); });
+addEventListener("resize", fit);
+fit(); show(i);
+</script>
+</body>
+</html>
