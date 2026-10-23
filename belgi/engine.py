@@ -319,6 +319,9 @@ def public_view(r, full=True):
     out["has_image"] = any(s["src"] == "ocr" for s in r["segments"])
     out["has_audio"] = any(s["src"] == "asr" for s in r["segments"])
     out["network_n"] = len(r["network"])
+    main = r["track"] or r.get("track_hint")
+    out["composition"] = ([{"label": label, "found": any(k in r["found"] for k in keys.split("|"))}
+                           for keys, label in lx.COMPOSITION[main]] if main else [])
     out["feedback"] = r.get("feedback")
     out["llm"] = r.get("llm")
     if full:

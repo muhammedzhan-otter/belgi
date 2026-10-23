@@ -82,6 +82,8 @@ async def main():
             t0 = time.time()
             await tab.call("Page.navigate", url=URL)
             await tab.wait("document.readyState === 'complete'")
+            await asyncio.sleep(1.5)
+            await tab.shot("web_hero", 900)
             await tab.wait("!document.getElementById('bootOverlay') && document.querySelector('#status .pill') !== null", 120)
             print(f"движок загружен за {time.time() - t0:.1f} с; статус: {await tab.js('document.getElementById(\"status\").innerText')!r}")
 
@@ -96,7 +98,7 @@ async def main():
             print("итог:", await tab.js("document.getElementById('stats').innerText.replace(/\\n/g,' ')"))
             await tab.js("[...document.querySelectorAll('#queue .item')].find(e=>e.dataset.id==='wa_004').click()")
             await tab.wait("document.querySelector('#case .chead') && document.querySelector('#case').innerText.includes('Табыс')", 20)
-            print("карточка wa_004:", (await tab.js("document.querySelector('#case .computed')?.innerText || ''")).replace("\n", " "))
+            print("карточка wa_004:", (await tab.js("document.querySelector('#case .calcs')?.innerText || ''")).replace("\n", " "))
             await tab.shot("web_case")
 
             await tab.js("document.querySelector('[data-tab=graph]').click()")
@@ -106,16 +108,16 @@ async def main():
 
             await tab.js("document.querySelector('[data-tab=monitor]').click(); document.querySelector('[data-src=telegram]').click();"
                          "document.getElementById('channel').value='tengrinews'; document.getElementById('scanBtn').click()")
-            await tab.wait("document.getElementById('scanInfo').innerText.includes('Найдено') || document.getElementById('scanInfo').innerText.includes('Новых') || document.getElementById('scanInfo').innerText.includes('не')", 120)
+            await tab.wait("!document.getElementById('scanBtn').disabled && document.getElementById('scanInfo').innerText.length > 0 && !document.querySelector('#scanInfo .spin')", 120)
             print("telegram:", await tab.js("document.getElementById('scanInfo').innerText"))
 
             await tab.js("document.querySelector('[data-tab=check]').click();"
                          "document.getElementById('ctext').value='Біздің клубқа қосылыңыз! Ақша салып, апта сайын табыс табыңыз. Жақын адамдарыңызды шақырсаңыз, сыйақы бар.';"
                          "document.getElementById('checkBtn').click()")
-            await tab.wait("document.getElementById('checkInfo').innerText.includes('Готово') || document.getElementById('checkInfo').innerText.length > 40", 90)
+            await tab.wait("!document.getElementById('checkBtn').disabled && document.getElementById('checkInfo').innerText.length > 0 && !document.querySelector('#checkInfo .spin')", 90)
             print("пример:", await tab.js("document.getElementById('checkInfo').innerText"),
-                  "|", (await tab.js("document.querySelector('#checkCase .level')?.innerText || ''")).replace("\n", " "),
-                  "|", await tab.js("document.querySelector('#checkCase .llmnote:last-of-type')?.innerText || ''"))
+                  "|", (await tab.js("document.querySelector('#checkCase .vlevel')?.innerText || ''")).replace("\n", " "),
+                  "|", await tab.js("[...document.querySelectorAll('#checkCase .note')].map(e=>e.innerText).join(' ')"))
             await tab.shot("web_check")
     finally:
         proc.terminate()
