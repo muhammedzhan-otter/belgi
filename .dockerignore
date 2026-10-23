@@ -1,0 +1,9 @@
+.venv
+models
+logs
+data/cache
+data/uploads
+docs
+**/__pycache__
+.git
+.DS_Store

@@ -1,0 +1,21 @@
+# Запуск на любом компьютере с Docker:
+#   docker compose up --build              панель на http://localhost:8090 (без LLM)
+#   docker compose --profile llm up --build  плюс локальная LLM (модель в ./models, на CPU медленно)
+services:
+  belgi:
+    build: .
+    ports:
+      - "8090:7860"
+    environment:
+      - BELGI_LLM_URL=${BELGI_LLM_URL:-http://llm:8081}
+      - BELGI_LLM_KEY=${BELGI_LLM_KEY:-}
+      - BELGI_LLM_MODEL=${BELGI_LLM_MODEL:-}
+    restart: unless-stopped
+  llm:
+    profiles: ["llm"]
+    image: ghcr.io/ggml-org/llama.cpp:server
+    volumes:
+      - ./models:/models:ro
+    command: ["-m", "/models/Qwen3.5-9B-Kazakh.Q4_K_M.gguf", "--host", "0.0.0.0", "--port", "8081",
+              "-c", "8192", "--jinja", "--reasoning-budget", "0"]
+    restart: unless-stopped

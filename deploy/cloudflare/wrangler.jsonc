@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "belgi",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-15",
+  "observability": { "enabled": true },
+  // Сайт (интерфейс + Python-движок для браузера); Worker отвечает только на /api/*
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "ai": { "binding": "AI", "remote": true },
+  "vars": {
+    "LLM_MODEL": "@cf/qwen/qwen3.8-27b",
+    "LLM_LABEL": "Qwen 3.8 27B (Workers AI)"
+  }
+}

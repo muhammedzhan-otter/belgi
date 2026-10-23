@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Белгі · панель аналитика</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo">Б</div>
+    <div>
+      <div class="name">Белгі</div>
+      <div class="sub">признаки незаконных схем в соцсетях и мессенджерах</div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="monitor">Мониторинг</button>
+    <button class="tab" data-tab="graph">Связи</button>
+    <button class="tab" data-tab="check">Проверить пример</button>
+    <button class="tab" data-tab="metrics">Метрики</button>
+  </nav>
+  <div class="status" id="status"></div>
+</header>
+
+<main>
+  <section class="view active" id="view-monitor">
+    <div class="left">
+      <div class="panel search">
+        <div class="seg" id="srcSeg">
+          <button class="on" data-src="demo">Демо-лента соцсетей</button>
+          <button data-src="telegram">Telegram-канал</button>
+          <button data-src="crawl">Автопоиск по цепочке</button>
+        </div>
+        <div class="row" id="demoOpts">
+          <label>Платформа
+            <select id="platform">
+              <option value="">Все</option>
+              <option value="instagram">Instagram</option>
+              <option value="telegram">Telegram</option>
+              <option value="whatsapp">WhatsApp (жалобы)</option>
+              <option value="tiktok">TikTok</option>
+            </select>
+          </label>
+          <label>Сколько
+            <select id="limit"><option>10</option><option>20</option><option value="50">все</option></select>
+          </label>
+        </div>
+        <div class="row hidden" id="tgOpts">
+          <label class="grow">Канал
+            <input id="channel" placeholder="например, tengrinews">
+          </label>
+          <label>Сколько
+            <select id="tgLimit"><option>10</option><option>20</option></select>
+          </label>
+        </div>
+        <div class="row hidden" id="crawlOpts">
+          <label class="grow">Стартовые публичные каналы (через запятую)
+            <input id="seeds" placeholder="например, tengrinews, kz_rozygrysh">
+          </label>
+          <label>Каналов
+            <select id="maxCh"><option>5</option><option selected>10</option><option>15</option><option>20</option></select>
+          </label>
+        </div>
+        <div class="hint hidden" id="crawlHint">Система проверит стартовые каналы, возьмёт из их постов ссылки и упоминания других каналов и пойдёт дальше. Каналы, на которые ссылаются подозрительные посты, проверяются первыми. Читаются только открытые страницы t.me/s/.</div>
+        <div class="row actions">
+          <button class="primary" id="scanBtn">Найти и проверить</button>
+          <label class="check"><input type="checkbox" id="useLlm" checked> LLM для спорных</label>
+          <button class="link" id="resetBtn">Сбросить</button>
+        </div>
+        <div class="scaninfo" id="scanInfo">Нажмите «Найти и проверить»: система заберёт следующие публикации из ленты и проверит каждую.</div>
+      </div>
+
+      <div class="panel channels hidden" id="channels"></div>
+      <div class="stats" id="stats"></div>
+      <div class="queue" id="queue"></div>
+    </div>
+    <div class="right">
+      <div class="panel case" id="case">
+        <div class="empty">Выберите публикацию слева. Здесь будет видно, какие признаки найдены, где именно и на какую норму они опираются.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-graph">
+    <div class="panel graphwrap">
+      <div class="graphhead">
+        <div>
+          <h2>Связи между аккаунтами</h2>
+          <p class="muted">Аккаунты связаны, если у них одна карта, телефон, промокод, ссылка или контакт «куратора». Номера показаны маской, в системе хранится только хеш.</p>
+        </div>
+        <div class="legend">
+          <span><i class="dot high"></i>аккаунт, высокий риск</span>
+          <span><i class="dot medium"></i>средний</span>
+          <span><i class="dot low"></i>низкий</span>
+          <span><i class="sq"></i>общая карта, телефон, промокод, ссылка</span>
+        </div>
+      </div>
+      <div id="cy"></div>
+      <div class="muted" id="graphEmpty">Связи появятся после проверки публикаций. В демо-ленте их видно после 20–30 публикаций.</div>
+    </div>
+  </section>
+
+  <section class="view" id="view-check">
+    <div class="checkgrid">
+      <div class="panel">
+        <h2>Проверить свой пример</h2>
+        <p class="muted">Вставьте текст поста, комментария или сообщения на русском, казахском или транслитом. Можно приложить скриншот.</p>
+        <textarea id="ctext" rows="8" placeholder="Текст публикации"></textarea>
+        <div class="row">
+          <input type="file" id="cfile" accept="image/*">
+        </div>
+        <div class="row presets">
+          <span class="muted">Быстрые примеры:</span>
+          <button class="chipbtn" data-preset="kk">казахский розыгрыш</button>
+          <button class="chipbtn" data-preset="free">бесплатный конкурс</button>
+          <button class="chipbtn" data-preset="mask">замаскированное казино</button>
+          <button class="chipbtn" data-preset="pyr">пирамида на казахском</button>
+        </div>
+        <div class="row actions">
+          <button class="primary" id="checkBtn">Проверить</button>
+          <span class="muted" id="checkInfo"></span>
+        </div>
+      </div>
+      <div class="panel case" id="checkCase">
+        <div class="empty">Результат появится здесь.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-metrics">
+    <div class="panel" id="metrics"></div>
+  </section>
+</main>
+
+<script src="vendor/cytoscape.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

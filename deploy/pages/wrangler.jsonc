@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Та же «Белгі» на Cloudflare Pages: адрес belgi-kz.pages.dev, функции /api/* из ../cloudflare/src
+  "name": "belgi-kz",
+  "pages_build_output_dir": "./public",
+  "compatibility_date": "2026-08-15",
+  "ai": { "binding": "AI" },
+  "vars": {
+    "LLM_MODEL": "@cf/qwen/qwen3.8-27b",
+    "LLM_LABEL": "Qwen 3.8 27B (Workers AI)"
+  }
+}

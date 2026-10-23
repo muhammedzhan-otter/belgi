@@ -1,0 +1,14 @@
+.venv/
+models/
+logs/
+data/cache/
+data/uploads/
+__pycache__/
+*.pyc
+.DS_Store
+.wrangler/
+node_modules/
+deploy/cloudflare/public/
+deploy/pages/public/
+# внутренние заметки команды
+docs/
