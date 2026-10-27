@@ -1,4 +1,4 @@
-"""Проверка сайта в настоящем Chrome (headless, CDP): загрузка движка, поиск, Telegram, пример с LLM.
+"""Проверка сайта в настоящем Chrome (headless, CDP): «Проверить всё», карточка, граф, Telegram, пример с LLM.
 Запуск: .venv/bin/python scripts/check_browser.py URL ПАПКА_ДЛЯ_СКРИНШОТОВ"""
 import asyncio
 import base64
@@ -84,29 +84,24 @@ async def main():
             await tab.wait("document.readyState === 'complete'")
             await asyncio.sleep(1.5)
             await tab.shot("web_hero", 900)
-            await tab.wait("!document.getElementById('bootOverlay') && document.querySelector('#status .pill') !== null", 120)
-            print(f"движок загружен за {time.time() - t0:.1f} с; статус: {await tab.js('document.getElementById(\"status\").innerText')!r}")
-
-            await tab.js("document.getElementById('scanBtn').click()")
-            await tab.wait("document.querySelectorAll('#queue .item').length >= 10", 60)
-            for n in (20, 30):
-                await tab.wait("!document.getElementById('scanBtn').disabled", 60)
-                await tab.js("document.getElementById('scanBtn').click()")
-                await tab.wait(f"document.querySelectorAll('#queue .item').length >= {n}", 60)
-            await tab.wait("document.querySelectorAll('#queue .item').length >= 30", 60)
-            print("демо:", await tab.js("document.getElementById('scanInfo').innerText"))
-            print("итог:", await tab.js("document.getElementById('stats').innerText.replace(/\\n/g,' ')"))
+            # одна кнопка: демо-лента, каналы Шымкента, связи, самопроверка
+            await tab.js("document.getElementById('heroAll').click()")
+            await tab.wait("window.BELGI_READY === true && state.ranAt && !state.busy", 240)
+            print(f"«Проверить всё» за {time.time() - t0:.1f} с (вместе с загрузкой движка)")
+            print("итог:", (await tab.js("document.getElementById('run').innerText")).replace("\n", " | "))
+            print("фильтры:", (await tab.js("document.getElementById('filters').innerText")).replace("\n", " "))
             await tab.js("[...document.querySelectorAll('#queue .item')].find(e=>e.dataset.id==='wa_004').click()")
             await tab.wait("document.querySelector('#case .chead') && document.querySelector('#case').innerText.includes('Табыс')", 20)
             print("карточка wa_004:", (await tab.js("document.querySelector('#case .calcs')?.innerText || ''")).replace("\n", " "))
             await tab.shot("web_case")
 
-            await tab.js("document.querySelector('[data-tab=graph]').click()")
+            await tab.js("document.querySelector('[data-act=net]').click()")
             await asyncio.sleep(2)
             print("граф узлов:", await tab.js("cy ? cy.nodes().length : 0"))
             await tab.shot("web_graph", 900)
 
-            await tab.js("document.querySelector('[data-tab=monitor]').click(); document.querySelector('[data-src=telegram]').click();"
+            await tab.js("document.querySelector('[data-tab=monitor]').click(); document.getElementById('more').open = true;"
+                         "document.querySelector('[data-src=telegram]').click();"
                          "document.getElementById('channel').value='tengrinews'; document.getElementById('scanBtn').click()")
             await tab.wait("!document.getElementById('scanBtn').disabled && document.getElementById('scanInfo').innerText.length > 0 && !document.querySelector('#scanInfo .spin')", 120)
             print("telegram:", await tab.js("document.getElementById('scanInfo').innerText"))

@@ -9,6 +9,29 @@
   let ocrWorker = null;
 
   const j = (s) => JSON.parse(s);
+  // готовые ответы по демо-ленте (scripts/build_web.py): итог виден сразу, пока движок ещё грузится
+  let PRE = null, preUsed = false, preSynced = false;
+  const prePromise = fetch("py/demo.json").then((r) => (r.ok ? r.json() : null)).then((d) => (PRE = d)).catch(() => null);
+  function preRoute(part, body, query, id) {
+    if (!PRE) return null;
+    if (part === "scan" && body && body.source === "demo" && !preUsed) {
+      preUsed = true;
+      return structuredClone(PRE.scan);
+    }
+    if (!preUsed) return part === "metrics" ? PRE.metrics : null;
+    if (part === "graph") return PRE.graph[query.get("city") || ""] || null;
+    if (part === "metrics") return PRE.metrics;
+    if (part === "case") return PRE.cases[id] || null;
+    if (part === "cases") return { cases: PRE.scan.cases, stats: PRE.scan.stats };
+    return null;
+  }
+  // движок загрузился: даём ему ту же демо-ленту, чтобы дальше всё считалось в одной сессии
+  function syncPre() {
+    if (preUsed && !preSynced) {
+      W.scan_demo(50, "");
+      preSynced = true;
+    }
+  }
   const loadScript = (src) => new Promise((ok, fail) => {
     const s = document.createElement("script");
     s.src = src; s.onload = ok;
@@ -27,8 +50,11 @@
     el.innerHTML = `<div class="bootbox"><div class="spin"></div><div>${text}</div></div>`;
   }
 
+  // движок грузится в фоне: страница читается сразу, а «Проверить всё» показывает загрузку строкой хода
+  window.BELGI_READY = false;
   const boot = (async () => {
-    overlay("Загружаю движок анализа. Первый раз это занимает 5–15 секунд, дальше быстрее.");
+    const st = document.getElementById("status");
+    if (st && !st.innerHTML) st.innerHTML = `<span class="pill" title="Python-движок анализа загружается в браузер"><i></i>движок загружается</span>`;
     try { health = await (await fetch("api/health")).json(); } catch (e) {}
     await loadScript(PYODIDE + "pyodide.js");
     const py = await loadPyodide({ indexURL: PYODIDE });
@@ -41,8 +67,14 @@
     }));
     py.runPython("import sys; sys.path.insert(0, '/home/pyodide')");
     W = py.pyimport("belgi.webapi");
-    overlay(null);
-  })().catch((e) => overlay("Не удалось запустить движок: " + e.message + ". Обновите страницу."));
+    window.BELGI_READY = true;
+  })().catch((e) => {
+    // без экрана поверх страницы: итог по демо-ленте остаётся, а строка «Движок» и плашка говорят, что случилось
+    window.BELGI_FAIL = e.message;
+    const st = document.getElementById("status");
+    if (st) st.innerHTML = `<span class="pill" title="${String(e.message).replace(/"/g, "")}"><i></i>движок не загрузился</span>`;
+  });
+  window.BELGI_BOOT = boot;
 
   function pyError(e) {
     const msg = String(e && e.message || e);
@@ -72,8 +104,9 @@
     return data.text.split("\n").map((s) => s.trim()).filter(Boolean).join("\n");
   }
 
+  // used: сколько спорных случаев модель разобрала; total: сколько было отправлено
   async function llmPass(ids) {
-    if (!health.llm || !ids.length) return 0;
+    if (!health.llm || !ids.length) return { used: 0, total: 0 };
     const reqs = j(W.llm_requests(JSON.stringify(ids)));
     let n = 0;
     for (const q of reqs) {
@@ -92,7 +125,7 @@
         clearTimeout(timer);
       }
     }
-    return n;
+    return { used: n, total: reqs.length };
   }
 
   const cleanChannel = (c) => String(c || "").trim().replace(/^@/, "").replace(/^https?:\/\/t\.me\//, "")
@@ -112,6 +145,7 @@
       if (ocrBudget.n > 0) {
         ocrBudget.n--;
         try { p.ocr_text = await ocr(p.image_url); } catch (e) { p.ocr_text = ""; }
+        p.ocr_done = true;
       }
     }
     return posts;
@@ -150,9 +184,10 @@
         }
       }
     }
+    if (body.local && report.length && report.every((e) => e.error)) throw new Error("Каналы не ответили");
     let fin = j(W.cases());
     const newIds = fin.cases.filter((c) => !before.has(c.id)).map((c) => c.id);
-    if (body.use_llm && await llmPass(newIds)) fin = j(W.cases());
+    if (body.use_llm && (await llmPass(newIds)).used) fin = j(W.cases());
     return { channels: report, elapsed: +((performance.now() - t0) / 1000).toFixed(1), new_ids: newIds,
              cases: fin.cases, stats: fin.stats };
   }
@@ -182,19 +217,16 @@
                      ts: p.ts, url: p.url, text: p.text, image_src: p.img });
       }
     }
-    // схемы часто в картинке с короткой подписью: такие распознаём первыми
-    const ocrIds = new Set(posts.filter((p) => p.image_src).sort((a, b) => a.text.length - b.text.length)
-      .slice(0, body.ocr ?? 3).map((p) => p.id));
+    // картинки распознаются потом, в фоне (маршрут ocr_one): итог по каналам не ждёт распознавания
     for (const p of posts) {
       if (p.image_src) {
         p.image_url = "api/tgimg?u=" + encodeURIComponent(p.image_src);
         p.image = "tg";
-        if (ocrIds.has(p.id)) { try { p.ocr_text = await ocr(p.image_url); } catch (e) { p.ocr_text = ""; } }
       }
       delete p.image_src;
     }
     let res = j(W.ingest(JSON.stringify(posts)));
-    if (body.use_llm && await llmPass(res.new_ids)) Object.assign(res, j(W.cases()));
+    if (body.use_llm && (await llmPass(res.new_ids)).used) Object.assign(res, j(W.cases()));
     const channels = Object.entries(feed.meta.channels).map(([name, c]) => {
       const mine = res.cases.filter((x) => x.account === "@" + name);
       return { channel: name, title: c.title, from: c.from, last: c.last, error: c.error, posts: mine.length,
@@ -208,11 +240,18 @@
   }
 
   window.BELGI_LOCAL = async (path, opts = {}) => {
-    await boot;
-    if (!W) throw new Error("Движок не загрузился, обновите страницу");
     const parts = path.split("?")[0].split("/");
+    const query = new URLSearchParams(path.split("?")[1] || "");
     const body = typeof opts.body === "string" ? JSON.parse(opts.body) : opts.body;
     const id = parts[2] ? decodeURIComponent(parts[2]) : "";
+    if (!W) {
+      await prePromise;
+      const fast = preRoute(parts[1], body, query, id);
+      if (fast) return fast;
+    }
+    await boot;
+    if (!W) throw new Error("Движок не загрузился, обновите страницу");
+    syncPre();
     switch (parts[1]) {
       case "status": {
         const label = health.llm ? health.model : "";
@@ -231,13 +270,17 @@
         } else {
           res = j(W.scan_demo(body.limit || 10, body.platform || ""));
         }
-        res.llm_used = body.use_llm ? await llmPass(res.new_ids) : 0;
+        res.llm_used = body.use_llm ? (await llmPass(res.new_ids)).used : 0;
         if (res.llm_used) Object.assign(res, j(W.cases()));
         res.elapsed = +((performance.now() - t0) / 1000).toFixed(2);
         return res;
       }
       case "crawl": return crawl(body);
       case "shym": return shym(body);
+      case "review": {
+        const n = await llmPass(body.ids || []);
+        return { llm_used: n.used, llm_total: n.total, ...j(W.cases()) };
+      }
       case "cases": return j(W.cases());
       case "case": {
         const v = j(W.case(id));
@@ -254,13 +297,21 @@
           ocrText = await ocr(file);
         }
         if (!text.trim() && !ocrText) throw new Error("Вставьте текст или приложите скриншот");
-        const cid = W.manual(text, ocrText, url);
+        const cid = W.manual(text, ocrText, url, body.get("demo") === "true");
         if (body.get("use_llm") === "true") await llmPass([cid]);
         return j(W.case(cid));
       }
       case "feedback": return j(W.feedback(id, body.verdict));
       case "reset": return j(W.reset());
-      case "graph": return j(W.graph(new URLSearchParams(path.split("?")[1] || "").get("city") || ""));
+      case "graph": return j(W.graph(query.get("city") || ""));
+      case "ocr_pending": return j(W.ocr_pending());
+      case "ocr_one": {
+        const p = j(W.ocr_pending()).find((x) => x.id === body.id);
+        if (!p) return null;
+        let text = "";
+        try { text = await ocr(p.image_url); } catch (e) {}
+        return j(W.ocr_apply(body.id, text));
+      }
       case "metrics": return j(W.metrics());
     }
     throw new Error("Неизвестный запрос " + path);
@@ -268,6 +319,7 @@
 
   window.BELGI_REPORT = async (cid) => {
     await boot;
+    syncPre();
     return W.report(cid);
   };
 })();

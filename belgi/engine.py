@@ -14,6 +14,11 @@ DISCLAIMER = ("Система показывает признаки возмож
               "проверяет специалист с учётом законодательства РК.")
 
 
+def _n(n, one, few, many):
+    a, b = n % 10, n % 100
+    return f"{n} " + (one if a == 1 and b != 11 else few if 2 <= a <= 4 and not 12 <= b <= 14 else many)
+
+
 def fmt(x, digits=0):
     s = f"{x:,.{digits}f}".replace(",", " ").replace(".", ",")
     return s
@@ -187,7 +192,7 @@ def analyze(post):
         "id": post["id"], "platform": post.get("platform"), "kind": post.get("kind"),
         "account": post.get("account"), "account_name": post.get("account_name"), "group": post.get("group"),
         "followers": post.get("followers"), "ts": post.get("ts"), "url": post.get("url"),
-        "image": post.get("image"), "lang": detect_lang(" ".join(s["text"] for s in segs)),
+        "image": post.get("image"), "demo": bool(post.get("demo")), "lang": detect_lang(" ".join(s["text"] for s in segs)),
         "segments": [{k: v for k, v in s.items() if k != "i"} for s in segs],
         "ctx": ctx, "found": found, "counters": cnt, "computed": computed,
         "entities": _unique_entities(ents), "label": post.get("label"), "network": [],
@@ -207,8 +212,7 @@ def _unique_entities(ents):
     return out
 
 
-def score_tracks(r):
-    found, cnt, ctx = r["found"], r["counters"], r["ctx"]
+def _track_scores(found, cnt, ctx):
     tracks = {}
     for t in lx.TRACKS:
         codes = [c for c, f in found.items() if f["track"] == t]
@@ -226,6 +230,17 @@ def score_tracks(r):
             level = "low"
         missing = [label for keys, label in lx.COMPOSITION[t] if not any(k in found for k in keys.split("|"))]
         tracks[t] = {"score": score, "level": level, "codes": codes, "missing": missing}
+    return tracks
+
+
+def score_tracks(r):
+    found, cnt, ctx = r["found"], r["counters"], r["ctx"]
+    tracks = _track_scores(found, cnt, ctx)
+    if any(f.get("llm") for f in found.values()):
+        # LLM поднимает уровень не больше чем на ступень от уровня правил, и при любом пересчёте (связи, автопроверка)
+        base = _track_scores({c: f for c, f in found.items() if not f.get("llm")}, cnt, ctx)
+        for t, v in tracks.items():
+            v["level"] = LEVELS[min(LEVELS.index(v["level"]), LEVELS.index(base[t]["level"]) + 1)]
     r["tracks"] = tracks
     primary = max(tracks, key=lambda t: (LEVELS.index(tracks[t]["level"]), tracks[t]["score"]))
     r["track"] = primary if tracks[primary]["score"] > 0 else None
@@ -302,7 +317,7 @@ def apply_network(results):
         if len(by_acc.get(r["account"], [])) >= 2:
             r["found"]["L6"] = {"code": "L6", "track": "lottery", "title": "Серия розыгрышей у аккаунта", "weight": 15,
                                 "norm": lx.NORMS["network"], "quotes": [],
-                                "detail": f"{len(by_acc[r['account']])} платных розыгрыша в проверенных публикациях"}
+                                "detail": f"{_n(len(by_acc[r['account']]), 'платный розыгрыш', 'платных розыгрыша', 'платных розыгрышей')} в проверенных публикациях"}
         score_tracks(r)
     return geo.propagate(results)
 
@@ -324,6 +339,7 @@ def public_view(r, full=True):
     main = r["track"] or r.get("track_hint")
     out["composition"] = ([{"label": label, "found": any(k in r["found"] for k in keys.split("|"))}
                            for keys, label in lx.COMPOSITION[main]] if main else [])
+    out["demo"] = r.get("demo", False)
     out["city"] = r["geo"]["city"]
     out["city_label"] = r["geo"]["label"]
     out["feedback"] = r.get("feedback")

@@ -45,6 +45,19 @@ for img in sorted((ROOT / "data" / "img").glob("*.png")):
 (OUT / "py" / "data" / "ocr_cache.json").write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
 files.append("data/ocr_cache.json")
 (OUT / "py" / "manifest.json").write_text(json.dumps(files), encoding="utf-8")
+
+# Демо-лента разбирается одними правилами, результат всегда один и тот же. Считаем его заранее:
+# пока Python-движок грузится в браузер (на медленном Wi-Fi до 25 с), итог по демо-ленте виден сразу.
+import time  # noqa: E402
+from belgi import webapi as W  # noqa: E402
+W.reset()
+t0 = time.perf_counter()
+scan = json.loads(W.scan_demo(50, ""))
+scan["elapsed"] = round(max(0.01, time.perf_counter() - t0), 2)
+pre = {"scan": scan, "graph": {"": json.loads(W.graph("")), "shymkent": json.loads(W.graph("shymkent"))},
+       "metrics": json.loads(W.metrics()), "cases": {c["id"]: json.loads(W.case(c["id"])) for c in scan["cases"]}}
+(OUT / "py" / "demo.json").write_text(json.dumps(pre, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+W.reset()
 # та же сборка для версии на Cloudflare Pages
 PAGES = ROOT / "deploy" / "pages" / "public"
 if PAGES.exists():

@@ -178,7 +178,7 @@ def extract(text):
         whole = info["domain"] in lx.SHORTENERS | lx.LINK_IN_BIO | {"t.me", "telegram.me", "chat.whatsapp.com"}
         lid = "url:" + raw.split("://")[-1].lower() if whole else "domain:" + info["domain"]
         ents.append({"type": "link", "start": m.start(), "end": m.start() + len(raw), "id": lid,
-                     "label": info["domain"], "url": raw, "signals": info["signals"], "licensed": info["licensed"]})
+                     "label": raw.split("://")[-1][:48] if whole else info["domain"], "url": raw, "signals": info["signals"], "licensed": info["licensed"]})
     for m in PROMO.finditer(text):
         code = m.group(1).upper()
         if code in {"KASPI", "IBAN"}:

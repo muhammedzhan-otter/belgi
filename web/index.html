@@ -19,7 +19,7 @@
     <nav class="tabs" aria-label="Разделы">
       <button class="tab active" data-tab="monitor"><span data-icon="pulse"></span><span class="tl">Мониторинг</span><span class="ts">Лента</span></button>
       <button class="tab" data-tab="graph"><span data-icon="network"></span><span class="tl">Связи</span><span class="ts">Связи</span></button>
-      <button class="tab" data-tab="check"><span data-icon="search"></span><span class="tl">Проверить текст</span><span class="ts">Проверка</span></button>
+      <button class="tab" data-tab="check"><span data-icon="search"></span><span class="tl">Свой текст</span><span class="ts">Свой текст</span></button>
       <button class="tab" data-tab="metrics"><span data-icon="chart"></span><span class="tl">Точность</span><span class="ts">Точность</span></button>
     </nav>
     <div class="status" id="status"></div>
@@ -31,13 +31,14 @@
   <section class="view active" id="view-monitor">
     <div class="hero" id="hero">
       <div class="hero-text">
-        <div class="eyebrow"><span data-icon="pin"></span>Пилот для Шымкента · хакатон SafeNet KZ</div>
-        <h1>Сам находит схемы, нацеленные на жителей Шымкента</h1>
-        <p>Белгі круглосуточно читает открытые каналы города, посты, скриншоты и эфиры на русском и казахском, оставляет только то, что относится к Шымкенту, и показывает, на чём основан риск: цитата, где она найдена и какая норма закона за ней стоит. Решение остаётся за специалистом.</p>
-        <div class="hero-cta">
-          <button class="btn primary big" id="heroScan"><span data-icon="play"></span>Проверить 10 публикаций</button>
-          <button class="btn ghost big" id="heroShym"><span data-icon="pin"></span>Мониторинг Шымкента</button>
-          <button class="btn ghost big" data-goto="check"><span data-icon="search"></span>Свой текст</button>
+        <div class="eyebrow"><span data-icon="pin"></span>Пилот для Шымкента<span class="ey-x"> · хакатон</span> SafeNet KZ</div>
+        <h1>Сам находит признаки схем, нацеленных на жителей Шымкента</h1>
+        <p>Читает посты, скриншоты и расшифровки эфиров на русском и казахском. По каждому признаку показывает цитату, где она найдена, и основание. Решение принимает специалист.</p>
+        <button class="btn primary big hero-go" id="heroAll" onclick="window.BELGI_CLICKED = 1"><span data-icon="play"></span>Проверить всё</button>
+        <p class="hero-note">34 синтетические публикации и настоящие открытые каналы Шымкента</p>
+        <div class="hero-links">
+          <button class="linkbtn light" data-goto="check">Проверить свой текст или скриншот ›</button>
+          <button class="linkbtn light" id="heroMore">Другие источники ›</button>
         </div>
       </div>
       <div class="hero-tracks">
@@ -54,82 +55,65 @@
           <div><b>Финансовые пирамиды</b><span>Доходность выше рынка, гарантии, бонус за приглашённых</span></div>
         </div>
       </div>
-      <ol class="steps">
-        <li><span class="num">1</span><div><b>Найти</b><span>сборщик сам обходит каналы Шымкента каждые 10 минут и оставляет только городское</span></div></li>
-        <li><span class="num">2</span><div><b>Разобрать</b><span>признаки с цитатами, расчётами и нормами закона</span></div></li>
-        <li><span class="num">3</span><div><b>Решить</b><span>подтвердить, отклонить или передать справку в ведомство</span></div></li>
-      </ol>
     </div>
 
-    <div class="workspace">
+    <div class="workspace hidden" id="workspace">
       <aside class="left">
         <div class="panel search">
-          <label class="region" title="Показывать только публикации, привязанные к Шымкенту: название города, район, микрорайон, телефон 7252, городской аккаунт или связь со шымкентской схемой">
-            <span class="rpin" data-icon="pin"></span>
-            <span class="rtxt"><b id="cityLabel">Только Шымкент</b><span>схемы, нацеленные на жителей города</span></span>
-            <span class="switch"><input type="checkbox" id="onlyCity" checked><span class="track"></span></span>
-          </label>
-          <div class="panel-title">Откуда брать публикации</div>
-          <div class="seg" id="srcSeg">
-            <button class="on" data-src="shym"><span data-icon="pin"></span>Шымкент</button>
-            <button data-src="demo"><span data-icon="layers"></span>Демо-лента</button>
-            <button data-src="telegram"><span data-icon="telegram"></span>Telegram-канал</button>
-            <button data-src="crawl"><span data-icon="network"></span>Автопоиск</button>
+          <div class="runhead">
+            <b id="runTitle">Проверка</b>
+            <button class="btn primary" id="allBtn"><span data-icon="play"></span><span id="allLabel">Проверить всё</span></button>
           </div>
-          <p class="hint" id="srcHint"></p>
-          <div class="row" id="shymOpts">
-            <label class="switch" title="Пока панель открыта, она каждые 5 минут забирает новое у сборщика">
-              <input type="checkbox" id="autoShym" checked><span class="track"></span>Проверять новое каждые 5 минут
-            </label>
-            <span class="autoinfo" id="autoInfo"></span>
-          </div>
-          <div class="row hidden" id="demoOpts">
-            <label>Платформа
-              <select id="platform">
-                <option value="">Все</option>
-                <option value="instagram">Instagram</option>
-                <option value="telegram">Telegram</option>
-                <option value="whatsapp">WhatsApp (жалобы)</option>
-                <option value="tiktok">TikTok</option>
-              </select>
-            </label>
-            <label>Сколько
-              <select id="limit"><option>10</option><option>20</option><option value="50">все</option></select>
-            </label>
-          </div>
-          <div class="row hidden" id="tgOpts">
-            <label class="grow">Публичный канал
-              <input id="channel" placeholder="например, tengrinews" autocomplete="off">
-            </label>
-            <label>Постов
-              <select id="tgLimit"><option>10</option><option>20</option></select>
-            </label>
-          </div>
-          <div class="row hidden" id="crawlOpts">
-            <label class="grow">Стартовые каналы, через запятую
-              <input id="seeds" placeholder="например, tengrinews" autocomplete="off">
-            </label>
-            <label>Каналов
-              <select id="maxCh"><option>5</option><option selected>10</option><option>15</option><option>20</option></select>
-            </label>
-          </div>
-          <div class="row actions">
-            <button class="btn primary" id="scanBtn"><span data-icon="play"></span>Найти и проверить</button>
-            <label class="switch" title="Спорные случаи дополнительно разбирает языковая модель. Она только ищет признаки с дословной цитатой, уровень меняет не больше чем на одну ступень.">
-              <input type="checkbox" id="useLlm" checked><span class="track"></span>LLM для спорных
-            </label>
-            <button class="btn subtle" id="resetBtn" title="Очистить очередь"><span data-icon="reset"></span></button>
-          </div>
+          <div class="run hidden" id="run" aria-live="polite"></div>
           <div class="scaninfo" id="scanInfo"></div>
+          <details class="more" id="more">
+            <summary><span data-icon="layers"></span>Другие источники и настройки</summary>
+            <div class="more-in">
+              <div class="seg two" id="srcSeg">
+                <button class="on" data-src="telegram"><span data-icon="telegram"></span>Telegram-канал</button>
+                <button data-src="crawl"><span data-icon="network"></span>Автопоиск</button>
+              </div>
+              <p class="hint" id="srcHint"></p>
+              <div class="row" id="tgOpts">
+                <label class="grow">Публичный канал
+                  <input id="channel" placeholder="например, tengrinews" autocomplete="off">
+                </label>
+                <label>Постов
+                  <select id="tgLimit"><option>10</option><option>20</option></select>
+                </label>
+              </div>
+              <div class="row hidden" id="crawlOpts">
+                <label class="grow">Стартовые каналы, через запятую
+                  <input id="seeds" placeholder="например, tengrinews" autocomplete="off">
+                </label>
+                <label>Каналов
+                  <select id="maxCh"><option>5</option><option selected>10</option><option>15</option><option>20</option></select>
+                </label>
+              </div>
+              <div class="row actions">
+                <button class="btn" id="scanBtn"><span data-icon="play"></span>Найти и проверить</button>
+              </div>
+              <div class="settings">
+                <label class="switch" title="Спорные случаи настоящих каналов дополнительно разбирает языковая модель. Она ищет только признаки с дословной цитатой и меняет уровень не больше чем на одну ступень. Демо-лента всегда разбирается одними правилами.">
+                  <input type="checkbox" id="useLlm" checked><span class="track"></span>LLM для спорных случаев
+                </label>
+                <label class="switch" title="Пока панель открыта, она каждые 5 минут забирает новое у сборщика Шымкента">
+                  <input type="checkbox" id="autoShym" checked><span class="track"></span>Проверять новое каждые 5 минут
+                </label>
+                <button class="btn" id="resetBtn"><span data-icon="reset"></span>Начать заново</button>
+              </div>
+            </div>
+          </details>
         </div>
 
-        <div class="kpis" id="stats"></div>
-        <div class="panel channels hidden" id="channels"></div>
+        <details class="panel channels hidden" id="channels"></details>
         <div class="filters hidden" id="filters"></div>
         <div class="queue" id="queue"></div>
       </aside>
 
       <section class="right">
+        <div class="sheetbar"><button class="btn" id="sheetClose"><span data-icon="back"></span>К списку</button>
+          <a class="btn" id="sheetReport" href="#" target="_blank" rel="noopener"><span data-icon="file"></span>Справка</a></div>
         <div class="panel case" id="case"></div>
       </section>
     </div>
@@ -141,15 +125,17 @@
       <div class="graphhead">
         <div>
           <h2>Связи между аккаунтами</h2>
-          <p class="muted">Аккаунты связаны, если у них одна карта, телефон, промокод, ссылка или контакт «куратора». Так видно, что за разными страницами стоит одна схема. Номера показаны маской, в системе хранится только хеш.</p>
+          <p class="muted">Аккаунты связаны, если у них одна карта, телефон, промокод, ссылка или контакт «куратора». Общий реквизит может указывать на одного организатора. Номера показаны маской, в системе хранится только хеш.</p>
         </div>
         <div class="legend">
           <span><i class="dot high"></i>высокий риск</span>
           <span><i class="dot medium"></i>средний</span>
           <span><i class="dot low"></i>низкий</span>
           <span><i class="sq"></i>общий реквизит</span>
+          <span><i class="dot dashed"></i>пунктир: демо</span>
         </div>
       </div>
+      <div class="demostrip hidden" id="graphDemo"></div>
       <div class="graphbody">
         <div id="cy"></div>
         <div class="gside" id="gside">
@@ -159,8 +145,8 @@
       <div class="empty-state hidden" id="graphEmpty">
         <span data-icon="network"></span>
         <b>Связей пока нет</b>
-        <span>Проверьте 20–30 публикаций демо-ленты: связи появятся, когда у разных аккаунтов найдутся общие реквизиты. В режиме «Только Шымкент» видны связи шымкентских аккаунтов.</span>
-        <button class="btn primary" data-goto="monitor">Перейти к мониторингу</button>
+        <span>Нажмите «Проверить всё»: связи между аккаунтами появятся сразу.</span>
+        <button class="btn primary" id="graphAll"><span data-icon="play"></span>Проверить всё</button>
       </div>
     </div>
   </section>
@@ -169,8 +155,8 @@
   <section class="view" id="view-check">
     <div class="checkgrid">
       <div class="panel checkform">
-        <h2>Проверить свой пример</h2>
-        <p class="muted">Вставьте пост, комментарий или сообщение на русском, казахском или транслитом. Можно приложить скриншот: текст с него распознается автоматически.</p>
+        <h2>Проверить свой текст или скриншот</h2>
+        <p class="muted">Вставьте пост, комментарий или сообщение на русском, казахском или транслитом. Можно приложить скриншот: текст с него распознаётся автоматически.</p>
         <textarea id="ctext" rows="7" placeholder="Текст публикации"></textarea>
         <label class="drop" id="drop">
           <input type="file" id="cfile" accept="image/*">
@@ -211,7 +197,6 @@
   <div>Система показывает признаки возможного нарушения. Законность проверяет специалист с учётом законодательства РК. · <a href="https://github.com/muhammedzhan-otter/belgi" target="_blank" rel="noopener">Исходный код</a></div>
 </footer>
 
-<script src="vendor/cytoscape.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

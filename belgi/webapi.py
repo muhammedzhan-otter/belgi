@@ -51,10 +51,10 @@ def crawl_channel(name, parent, posts_json, local=False):
     return _j({"entry": entry, "refs": refs})
 
 
-def manual(text, ocr_text="", image_url=""):
+def manual(text, ocr_text="", image_url="", demo=False):
     cid = "man_" + uuid.uuid4().hex[:6]
     post = {"id": cid, "platform": "manual", "kind": "manual", "account": "Ручная проверка",
-            "ts": datetime.now().isoformat(timespec="minutes"), "text": (text or "")[:6000]}
+            "ts": datetime.now().isoformat(timespec="minutes"), "text": (text or "")[:6000], "demo": bool(demo)}
     if ocr_text:
         post["ocr_text"] = ocr_text
         post["image"] = "upload"
@@ -83,6 +83,16 @@ def llm_apply(cid, content, seconds, model=""):
     return llm.apply_response(r, content, _llm_codes.pop(cid), float(seconds), model)
 
 
+def ocr_pending():
+    """Посты из Telegram, картинку которых браузер ещё не распознал."""
+    return _j([{"id": cid, "image_url": r.get("image_url")} for cid, r in S["results"].items() if r.get("ocr_pending")])
+
+
+def ocr_apply(cid, text):
+    r = core.reanalyze(S, cid, text)
+    return _j(core.view(r, False) if r else None)
+
+
 def cases():
     return _j({"cases": core.sorted_views(S), "stats": core.stats(S)})
 
@@ -98,6 +108,7 @@ def feedback(cid, verdict):
 
 def reset():
     S["results"].clear()
+    S["posts"].clear()
     S["demo"].reset()
     return _j({"ok": True})
 

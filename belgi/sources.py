@@ -31,6 +31,7 @@ class DemoSource:
         batch = feed[self.pos:self.pos + limit]
         self.pos += len(batch)
         for p in batch:
+            p["demo"] = True          # синтетика: в интерфейсе помечается, чтобы не спутать с настоящими находками
             if p.get("image"):
                 p["image"] = str(DATA / p["image"])
         return batch, self.pos >= len(feed)

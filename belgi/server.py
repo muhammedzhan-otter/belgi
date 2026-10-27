@@ -48,6 +48,10 @@ class ShymReq(BaseModel):
     use_llm: bool = False
 
 
+class ReviewReq(BaseModel):
+    ids: list[str] = []
+
+
 class FeedbackReq(BaseModel):
     verdict: str  # confirmed | false_positive | sent
 
@@ -156,8 +160,40 @@ def shym(req: ShymReq, request: Request, response: Response):
     finally:
         S["busy"] = False
     new_ids = [i for i in S["results"] if i not in before]
-    return {"channels": report, "elapsed": round(time.perf_counter() - t0, 1), "new_ids": new_ids,
+    if report and all(e.get("error") for e in report) and not new_ids:
+        raise HTTPException(502, "Каналы не ответили")
+    return {"channels": _channel_rows(S, report), "elapsed": round(time.perf_counter() - t0, 1), "new_ids": new_ids,
             "cases": core.sorted_views(S), "stats": core.stats(S), "collector": None}
+
+
+def _channel_rows(S, report):
+    """Строки каналов по всей сессии, а не только по новым постам этого обхода."""
+    known = S.setdefault("shym_channels", {})
+    for e in report:
+        c = known.setdefault(e["channel"], {"channel": e["channel"], "from": e.get("from"), "title": None})
+        c["title"] = e.get("title") or c["title"]
+        c["error"] = e.get("error")
+    rows = []
+    for name, c in known.items():
+        mine = [r for r in S["results"].values() if r["account"] == "@" + name]
+        rows.append({**c, "title": c["title"] or (mine[0].get("account_name") if mine else None), "last": None,
+                     "posts": len(mine), "high": sum(r["level"] == "high" for r in mine),
+                     "medium": sum(r["level"] == "medium" for r in mine),
+                     "local": sum(r["geo"]["city"] == geo.CITY for r in mine), "signs": [],
+                     "tracks": sorted({r["track"] for r in mine if r["level"] != "low" and r["track"]})})
+    return rows
+
+
+@app.post("/api/review")
+def review(req: ReviewReq, request: Request, response: Response):
+    """LLM уточняет спорные случаи уже после того, как результат правил показан."""
+    rate_limit(request)
+    S = session(request, response)
+    cands = []
+    if llm.available():
+        cands = [r for r in (S["results"].get(cid) for cid in req.ids[:60]) if r and llm.build_request(r)]
+    used = sum(1 for r in cands if llm.review(r))
+    return {"llm_used": used, "llm_total": len(cands), "cases": core.sorted_views(S), "stats": core.stats(S)}
 
 
 @app.get("/api/cases")
@@ -186,12 +222,12 @@ def image(cid: str, request: Request, response: Response):
 
 @app.post("/api/analyze")
 async def analyze_custom(request: Request, response: Response, text: str = Form(""),
-                         file: UploadFile | None = File(None), use_llm: bool = Form(True)):
+                         file: UploadFile | None = File(None), use_llm: bool = Form(True), demo: bool = Form(False)):
     rate_limit(request)
     S = session(request, response)
     cid = "man_" + uuid.uuid4().hex[:6]
     post = {"id": cid, "platform": "manual", "kind": "manual", "account": "Ручная проверка",
-            "ts": datetime.now().astimezone().isoformat(timespec="minutes"), "text": text[:MAX_TEXT]}
+            "ts": datetime.now().astimezone().isoformat(timespec="minutes"), "text": text[:MAX_TEXT], "demo": demo}
     if file and file.filename:
         suffix = Path(file.filename).suffix.lower()
         if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
@@ -223,6 +259,8 @@ def feedback(cid: str, req: FeedbackReq, request: Request, response: Response):
 def reset(request: Request, response: Response):
     S = session(request, response)
     S["results"].clear()
+    S["posts"].clear()
+    S.pop("shym_channels", None)
     S["demo"].reset()
     return {"ok": True}
 
