@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT))
 from belgi import ocr  # noqa: E402
 
 OUT = ROOT / "deploy" / "cloudflare" / "public"
-PY = ["__init__", "normalize", "lexicon", "entities", "engine", "evaluate", "sources", "crawl", "core", "llm", "ocr", "webapi"]
+PY = ["__init__", "normalize", "lexicon", "entities", "geo", "engine", "evaluate", "sources", "crawl", "core", "llm", "ocr", "webapi"]
 
 if OUT.exists():
     shutil.rmtree(OUT)

@@ -31,12 +31,13 @@
   <section class="view active" id="view-monitor">
     <div class="hero" id="hero">
       <div class="hero-text">
-        <div class="eyebrow">Прототип для хакатона SafeNet KZ</div>
-        <h1>Находит признаки незаконных схем в соцсетях и мессенджерах</h1>
-        <p>Белгі читает посты, скриншоты и эфиры на русском и казахском, ставит уровень риска и показывает, на чём он основан: цитата, где она найдена и какая норма закона за ней стоит. Решение остаётся за специалистом.</p>
+        <div class="eyebrow"><span data-icon="pin"></span>Пилот для Шымкента · хакатон SafeNet KZ</div>
+        <h1>Сам находит схемы, нацеленные на жителей Шымкента</h1>
+        <p>Белгі круглосуточно читает открытые каналы города, посты, скриншоты и эфиры на русском и казахском, оставляет только то, что относится к Шымкенту, и показывает, на чём основан риск: цитата, где она найдена и какая норма закона за ней стоит. Решение остаётся за специалистом.</p>
         <div class="hero-cta">
           <button class="btn primary big" id="heroScan"><span data-icon="play"></span>Проверить 10 публикаций</button>
-          <button class="btn ghost big" data-goto="check"><span data-icon="search"></span>Проверить свой текст</button>
+          <button class="btn ghost big" id="heroShym"><span data-icon="pin"></span>Мониторинг Шымкента</button>
+          <button class="btn ghost big" data-goto="check"><span data-icon="search"></span>Свой текст</button>
         </div>
       </div>
       <div class="hero-tracks">
@@ -54,7 +55,7 @@
         </div>
       </div>
       <ol class="steps">
-        <li><span class="num">1</span><div><b>Найти</b><span>демо-лента, Telegram-канал или автопоиск по цепочке каналов</span></div></li>
+        <li><span class="num">1</span><div><b>Найти</b><span>сборщик сам обходит каналы Шымкента каждые 10 минут и оставляет только городское</span></div></li>
         <li><span class="num">2</span><div><b>Разобрать</b><span>признаки с цитатами, расчётами и нормами закона</span></div></li>
         <li><span class="num">3</span><div><b>Решить</b><span>подтвердить, отклонить или передать справку в ведомство</span></div></li>
       </ol>
@@ -63,14 +64,26 @@
     <div class="workspace">
       <aside class="left">
         <div class="panel search">
+          <label class="region" title="Показывать только публикации, привязанные к Шымкенту: название города, район, микрорайон, телефон 7252, городской аккаунт или связь со шымкентской схемой">
+            <span class="rpin" data-icon="pin"></span>
+            <span class="rtxt"><b id="cityLabel">Только Шымкент</b><span>схемы, нацеленные на жителей города</span></span>
+            <span class="switch"><input type="checkbox" id="onlyCity" checked><span class="track"></span></span>
+          </label>
           <div class="panel-title">Откуда брать публикации</div>
           <div class="seg" id="srcSeg">
-            <button class="on" data-src="demo"><span data-icon="layers"></span>Демо-лента</button>
+            <button class="on" data-src="shym"><span data-icon="pin"></span>Шымкент</button>
+            <button data-src="demo"><span data-icon="layers"></span>Демо-лента</button>
             <button data-src="telegram"><span data-icon="telegram"></span>Telegram-канал</button>
             <button data-src="crawl"><span data-icon="network"></span>Автопоиск</button>
           </div>
-          <p class="hint" id="srcHint">34 синтетические публикации из Instagram, Telegram, TikTok и жалоб из WhatsApp. За один раз берутся следующие 10.</p>
-          <div class="row" id="demoOpts">
+          <p class="hint" id="srcHint"></p>
+          <div class="row" id="shymOpts">
+            <label class="switch" title="Пока панель открыта, она каждые 5 минут забирает новое у сборщика">
+              <input type="checkbox" id="autoShym" checked><span class="track"></span>Проверять новое каждые 5 минут
+            </label>
+            <span class="autoinfo" id="autoInfo"></span>
+          </div>
+          <div class="row hidden" id="demoOpts">
             <label>Платформа
               <select id="platform">
                 <option value="">Все</option>
@@ -146,7 +159,7 @@
       <div class="empty-state hidden" id="graphEmpty">
         <span data-icon="network"></span>
         <b>Связей пока нет</b>
-        <span>Проверьте 20–30 публикаций демо-ленты: связи появятся, когда у разных аккаунтов найдутся общие реквизиты.</span>
+        <span>Проверьте 20–30 публикаций демо-ленты: связи появятся, когда у разных аккаунтов найдутся общие реквизиты. В режиме «Только Шымкент» видны связи шымкентских аккаунтов.</span>
         <button class="btn primary" data-goto="monitor">Перейти к мониторингу</button>
       </div>
     </div>
@@ -194,7 +207,7 @@
 </main>
 
 <footer class="foot">
-  <div><b>Белгі</b> · прототип для хакатона SafeNet KZ. Демо-лента синтетическая, Telegram читается только из публичных каналов.</div>
+  <div><b>Белгі</b> · пилот для Шымкента, хакатон SafeNet KZ. Демо-лента синтетическая, Telegram читается только из публичных каналов.</div>
   <div>Система показывает признаки возможного нарушения. Законность проверяет специалист с учётом законодательства РК. · <a href="https://github.com/muhammedzhan-otter/belgi" target="_blank" rel="noopener">Исходный код</a></div>
 </footer>
 

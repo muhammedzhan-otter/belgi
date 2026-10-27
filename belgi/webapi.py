@@ -4,7 +4,7 @@ import json
 import uuid
 from datetime import datetime
 
-from . import core, engine, lexicon as lx, llm, sources
+from . import core, engine, geo, lexicon as lx, llm, sources
 
 S = core.new_state()
 _llm_codes = {}
@@ -22,7 +22,8 @@ def _scan_result(new, done=False, elapsed=0.0):
 
 def status(llm_on=False, llm_label=""):
     return _j({"ocr": True, "llm": bool(llm_on), "llm_model": llm_label or "выключена",
-               "tracks": lx.TRACKS, "stats": core.stats(S)})
+               "tracks": lx.TRACKS, "stats": core.stats(S),
+               "city": {"id": geo.CITY, "label": geo.CITY_RU, "seeds": geo.SEEDS}})
 
 
 def scan_demo(limit=10, platform=None):
@@ -44,9 +45,9 @@ def ingest(posts_json):
     return _j(_scan_result(new))
 
 
-def crawl_channel(name, parent, posts_json):
+def crawl_channel(name, parent, posts_json, local=False):
     new = core.process(S, json.loads(posts_json))
-    entry, refs = core.crawl_entry(name, parent or None, new)
+    entry, refs = core.crawl_entry(name, parent or None, new, bool(local))
     return _j({"entry": entry, "refs": refs})
 
 
@@ -101,8 +102,8 @@ def reset():
     return _j({"ok": True})
 
 
-def graph():
-    return _j(core.graph(S))
+def graph(city=""):
+    return _j(core.graph(S, city or None))
 
 
 def metrics():

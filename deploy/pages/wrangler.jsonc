@@ -5,6 +5,7 @@
   "pages_build_output_dir": "./public",
   "compatibility_date": "2026-08-15",
   "ai": { "binding": "AI" },
+  "kv_namespaces": [{ "binding": "SHYM", "id": "07a8964cf3ae43cab9e9217e726e1f25" }],
   "vars": {
     "LLM_MODEL": "@cf/qwen/qwen3.8-27b",
     "LLM_LABEL": "Qwen 3.8 27B (Workers AI)"

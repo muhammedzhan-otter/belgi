@@ -2,7 +2,11 @@
 //   /api/tg/<канал>  страница t.me/s/<канал> (только публичные каналы, кэш 2 минуты)
 //   /api/tgimg?u=    картинка из поста Telegram (только CDN Telegram), чтобы браузер мог её распознать
 //   /api/llm         LLM для спорных случаев через Workers AI (только запросы Белгі)
+//   /api/shym/feed   что сборщик Шымкента собрал по расписанию (см. shym.js)
+//   /api/shym/run    внеочередной обход, если сборщик давно не запускался
 //   /api/health      что включено
+
+import { collect, feed } from "./shym.js";
 
 const CHANNEL = /^[A-Za-z0-9_]{4,64}$/;
 const IMG_HOST = /(^|\.)(telesco\.pe|telegram-cdn\.org|cdn-telegram\.org)$/;
@@ -65,6 +69,15 @@ export async function handleApi(request, env) {
     if (p.startsWith("/api/tg/")) return await telegramPage(decodeURIComponent(p.slice(8)));
     if (p === "/api/tgimg") return await telegramImage(url.searchParams.get("u") || "");
     if (p === "/api/llm" && request.method === "POST") return await llm(request, env);
+    if (p === "/api/shym/feed") {
+      if (!env.SHYM) return json({ meta: null, posts: {} });
+      return new Response(await feed(env), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+    }
+    if (p === "/api/shym/run" && request.method === "POST") {
+      if (!env.SHYM) return json({ error: "collector off" }, 503);
+      const r = await collect(env, true);
+      return json({ skipped: r.skipped, runs: r.meta.runs, last_run: r.meta.last_run });
+    }
     return json({ error: "not found" }, 404);
   } catch (e) {
     return json({ error: String(e && e.message || e) }, 502);
@@ -75,5 +88,8 @@ export default {
   async fetch(request, env) {
     if (new URL(request.url).pathname.startsWith("/api/")) return handleApi(request, env);
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(event, env, ctx) {
+    if (env.SHYM) ctx.waitUntil(collect(env));
   },
 };

@@ -3,6 +3,7 @@ import re
 from collections import defaultdict
 
 from . import entities as en
+from . import geo
 from . import lexicon as lx
 from .normalize import detect_lang, fold, normalize
 
@@ -191,6 +192,7 @@ def analyze(post):
         "ctx": ctx, "found": found, "counters": cnt, "computed": computed,
         "entities": _unique_entities(ents), "label": post.get("label"), "network": [],
     }
+    result["geo_base"] = result["geo"] = geo.locate(post, segs)
     score_tracks(result)
     return result
 
@@ -302,7 +304,7 @@ def apply_network(results):
                                 "norm": lx.NORMS["network"], "quotes": [],
                                 "detail": f"{len(by_acc[r['account']])} платных розыгрыша в проверенных публикациях"}
         score_tracks(r)
-    return results
+    return geo.propagate(results)
 
 
 def public_view(r, full=True):
@@ -322,6 +324,8 @@ def public_view(r, full=True):
     main = r["track"] or r.get("track_hint")
     out["composition"] = ([{"label": label, "found": any(k in r["found"] for k in keys.split("|"))}
                            for keys, label in lx.COMPOSITION[main]] if main else [])
+    out["city"] = r["geo"]["city"]
+    out["city_label"] = r["geo"]["label"]
     out["feedback"] = r.get("feedback")
     out["llm"] = r.get("llm")
     if full:
@@ -331,6 +335,7 @@ def public_view(r, full=True):
         out["entities"] = r["entities"]
         out["computed"] = r["computed"]
         out["network"] = r["network"]
+        out["geo"] = r["geo"]
         out["highlights"] = _highlights(r)
         out["disclaimer"] = DISCLAIMER
     return out
@@ -344,5 +349,8 @@ def _highlights(r):
     for c in r["counters"].values():
         for q in c["quotes"]:
             hl[q["seg"]].append({"start": q["start"], "end": q["end"], "code": c["code"], "track": c["track"], "kind": "counter"})
+    for q in r["geo"]["evidence"]:
+        if q.get("seg") is not None:
+            hl[q["seg"]].append({"start": q["start"], "end": q["end"], "code": "GEO", "track": None, "kind": "geo"})
     # все совпадения признака, а не только первые три
     return {k: sorted(v, key=lambda x: x["start"]) for k, v in hl.items()}

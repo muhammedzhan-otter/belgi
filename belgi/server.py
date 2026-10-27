@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from . import core
 from . import crawl as crawler
-from . import engine, llm, lexicon as lx, ocr, sources
+from . import engine, geo, llm, lexicon as lx, ocr, sources
 
 ROOT = Path(__file__).resolve().parent.parent
 UPLOADS = Path(os.environ.get("BELGI_UPLOADS", ROOT / "data" / "uploads"))
@@ -41,6 +41,10 @@ class ScanReq(BaseModel):
 class CrawlReq(BaseModel):
     seeds: str
     max_channels: int = 10
+    use_llm: bool = False
+
+
+class ShymReq(BaseModel):
     use_llm: bool = False
 
 
@@ -89,7 +93,8 @@ def _process(S, posts, use_llm):
 def status(request: Request, response: Response):
     S = session(request, response)
     return {"ocr": ocr.available(), "llm": llm.available(), "llm_model": llm.MODEL_NAME,
-            "tracks": lx.TRACKS, "stats": core.stats(S)}
+            "tracks": lx.TRACKS, "stats": core.stats(S),
+            "city": {"id": geo.CITY, "label": geo.CITY_RU, "seeds": geo.SEEDS}}
 
 
 @app.post("/api/scan")
@@ -133,6 +138,26 @@ def crawl(req: CrawlReq, request: Request, response: Response):
     new_ids = [i for i in S["results"] if i not in before]
     return {"channels": report, "elapsed": round(time.perf_counter() - t0, 1), "new_ids": new_ids,
             "cases": core.sorted_views(S), "stats": core.stats(S)}
+
+
+@app.post("/api/shym")
+def shym(req: ShymReq, request: Request, response: Response):
+    """Режим «Шымкент» на своём сервере: обход каналов города прямо сейчас.
+    Круглосуточный обход по расписанию делает python -m belgi.monitor."""
+    rate_limit(request)
+    S = session(request, response)
+    if S["busy"]:
+        raise HTTPException(409, "Обход уже идёт")
+    S["busy"] = True
+    t0 = time.perf_counter()
+    before = set(S["results"])
+    try:
+        report = crawler.crawl(geo.SEEDS, lambda posts: _process(S, posts, req.use_llm)[0], max_channels=8, local=True)
+    finally:
+        S["busy"] = False
+    new_ids = [i for i in S["results"] if i not in before]
+    return {"channels": report, "elapsed": round(time.perf_counter() - t0, 1), "new_ids": new_ids,
+            "cases": core.sorted_views(S), "stats": core.stats(S), "collector": None}
 
 
 @app.get("/api/cases")
@@ -203,8 +228,8 @@ def reset(request: Request, response: Response):
 
 
 @app.get("/api/graph")
-def graph(request: Request, response: Response):
-    return core.graph(session(request, response))
+def graph(request: Request, response: Response, city: str | None = None):
+    return core.graph(session(request, response), city or None)
 
 
 @app.get("/api/metrics")

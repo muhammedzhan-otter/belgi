@@ -7,6 +7,9 @@
   // Сайт (интерфейс + Python-движок для браузера); Worker отвечает только на /api/*
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
   "ai": { "binding": "AI", "remote": true },
+  "kv_namespaces": [{ "binding": "SHYM", "id": "07a8964cf3ae43cab9e9217e726e1f25" }],
+  // сборщик Шымкента: сам обходит открытые каналы города, даже когда сайт никто не открыл
+  "triggers": { "crons": ["*/10 * * * *"] },
   "vars": {
     "LLM_MODEL": "@cf/qwen/qwen3.8-27b",
     "LLM_LABEL": "Qwen 3.8 27B (Workers AI)"

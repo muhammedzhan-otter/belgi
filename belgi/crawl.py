@@ -23,7 +23,7 @@ def _fetch(name, posts_per_channel, with_images):
         return name, [], str(e)[:120]
 
 
-def crawl(seeds, process, max_channels=12, posts_per_channel=10, workers=6, with_images=True):
+def crawl(seeds, process, max_channels=12, posts_per_channel=10, workers=6, with_images=True, local=False):
     """process(posts) -> список результатов анализа (уже добавленных в сессию)."""
     seeds = [s.strip().lstrip("@").replace("https://t.me/", "").replace("t.me/", "").strip("/") for s in seeds]
     queue = [(s.lower(), None, 0) for s in seeds if re.fullmatch(r"[A-Za-z0-9_]{4,64}", s)]
@@ -44,7 +44,7 @@ def crawl(seeds, process, max_channels=12, posts_per_channel=10, workers=6, with
         for (name, parent, _), (_, posts, err) in zip(batch, fetched):
             seen.add(name)
             results = process(posts) if posts else []
-            entry, refs = core.crawl_entry(name, parent, results)
+            entry, refs = core.crawl_entry(name, parent, results, local)
             entry["error"] = err if not posts else None
             report.append(entry)
             for ref, weight in refs.items():

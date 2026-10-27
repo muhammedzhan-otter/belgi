@@ -41,6 +41,8 @@ const I = {
   external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  pin: '<path d="M12 21s-6.5-5.8-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 15.2 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.3"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
 };
 const icon = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n] || ""}</svg>`;
 const paintIcons = (root = document) => $$("[data-icon]", root).forEach((el) => {
@@ -58,12 +60,17 @@ const LANG = { ru: "русский", kk: "казахский", mix: "смеша�
 const FB = { confirmed: "Признаки подтверждены", false_positive: "Ложное срабатывание", sent: "Передано в ведомство" };
 const ENT_ICON = { card: "card", phone: "phone", iban: "card", promo: "tag", link: "link", mention: "at" };
 const HINT = {
+  shym: "Сборщик в облаке сам каждые 10 минут читает открытые Telegram-каналы Шымкента и каналы, на которые они ссылаются, даже когда панель закрыта. Здесь появляется собранное и разобранное.",
   demo: "34 синтетические публикации из Instagram, Telegram, TikTok и жалоб из WhatsApp. За один раз берутся следующие 10.",
   telegram: "Последние посты любого публичного канала с открытой страницы t.me/s/. Картинки из постов распознаются автоматически.",
   crawl: "Система проверит стартовые каналы, возьмёт из постов ссылки на другие каналы и пойдёт дальше. Каналы, на которые ссылаются подозрительные посты, проверяются первыми.",
 };
 
-const state = { src: "demo", selected: null, cases: [], flevel: null, ftrack: null, llmModel: "" };
+const GEO_SRC = { text: "текст", ocr: "скриншот", bio: "профиль", asr: "эфир", account: "аккаунт", network: "связь" };
+const state = { src: "shym", selected: null, cases: [], flevel: null, ftrack: null, llmModel: "",
+                onlyCity: true, city: { id: "shymkent", label: "Шымкент", seeds: [] }, timer: null, nextAt: 0 };
+// режим «Шымкент»: в очереди только публикации, привязанные к городу
+const visible = () => state.onlyCity ? state.cases.filter((c) => c.city === state.city.id) : state.cases;
 
 /* ---------- связь с сервером или с движком в браузере ---------- */
 // номер сессии храним в браузере: во фрейме cookie могут не работать
@@ -117,6 +124,7 @@ const trkTag = (t) => t ? `<span class="trk ${t}">${icon(TRACK_ICON[t])}${TRACK_
 async function loadStatus() {
   const s = await api("api/status");
   state.llmModel = s.llm_model;
+  if (s.city) state.city = s.city;
   const llmName = s.llm ? esc(String(s.llm_model).split(" (")[0].split(",")[0]) : "выключена";
   $("#status").innerHTML =
     `<span class="pill ${s.ocr ? "on" : ""}" title="Распознавание текста на скриншотах: казахский, русский, английский"><i></i>OCR каз/рус</span>` +
@@ -132,15 +140,24 @@ function setSource(src) {
   $("#demoOpts").classList.toggle("hidden", src !== "demo");
   $("#tgOpts").classList.toggle("hidden", src !== "telegram");
   $("#crawlOpts").classList.toggle("hidden", src !== "crawl");
+  $("#shymOpts").classList.toggle("hidden", src !== "shym");
   $("#srcHint").textContent = HINT[src];
-  $("#scanBtn").innerHTML = icon("play") + (src === "crawl" ? "Начать автопоиск" : "Найти и проверить");
+  $("#scanBtn").innerHTML = icon("play") + (src === "crawl" ? "Начать автопоиск" : src === "shym" ? "Показать собранное" : "Найти и проверить");
 }
 $("#scanBtn").addEventListener("click", scan);
 $("#heroScan").addEventListener("click", () => { setSource("demo"); scan(); });
+$("#heroShym").addEventListener("click", () => { setSource("shym"); scan(); });
+$("#onlyCity").addEventListener("change", (e) => {
+  state.onlyCity = e.target.checked;
+  renderAll();
+  if ($("#view-graph").classList.contains("active")) loadGraph();
+});
+$("#autoShym").addEventListener("change", (e) => { if (!e.target.checked) stopAuto(); });
 $("#channel").addEventListener("keydown", (e) => { if (e.key === "Enter") scan(); });
 $("#seeds").addEventListener("keydown", (e) => { if (e.key === "Enter") scan(); });
 $("#resetBtn").addEventListener("click", async () => {
   await api("api/reset", { method: "POST" });
+  stopAuto();
   Object.assign(state, { cases: [], selected: null, flevel: null, ftrack: null });
   renderAll([]);
   renderChannels([]);
@@ -162,6 +179,7 @@ function busy(on, text) {
 
 async function scan() {
   if (state.src === "crawl") return crawl();
+  if (state.src === "shym") return shym();
   const body = { source: state.src, use_llm: $("#useLlm").checked };
   if (state.src === "demo") { body.limit = +$("#limit").value; body.platform = $("#platform").value || null; }
   else { body.channel = $("#channel").value; body.limit = +$("#tgLimit").value; }
@@ -173,14 +191,16 @@ async function scan() {
     renderAll(r.new_ids);
     const fresh = r.cases.filter((c) => r.new_ids.includes(c.id));
     const risky = fresh.filter((c) => c.level !== "low").length;
+    const local = fresh.filter((c) => c.city === state.city.id).length;
     let t = r.found
-      ? `Проверено <b>${r.found}</b> публикаций за <b>${fmtSec(r.elapsed)} с</b>, с признаками схем: <b>${risky}</b>.`
+      ? `Проверено <b>${r.found}</b> публикаций за <b>${fmtSec(r.elapsed)} с</b>, с признаками схем: <b>${risky}</b>. Про ${esc(state.city.label)}: <b>${local}</b>.`
       : "Новых публикаций нет.";
     if (r.images) t += ` Скриншотов распознано: ${r.images}.`;
     if (r.llm_used) t += ` LLM разобрала спорных: ${r.llm_used}.`;
     if (r.done) t += " Демо-лента закончилась, кнопка справа начнёт её заново.";
     info(t);
-    const first = fresh.find((c) => c.level === "high") || fresh[0];
+    const shown = fresh.filter((c) => !state.onlyCity || c.city === state.city.id);
+    const first = shown.find((c) => c.level === "high") || shown[0];
     if (first && (!state.selected || window.innerWidth > 1100)) openCase(first.id, "#case", false);
   } catch (e) {
     info(esc(e.message), true);
@@ -209,17 +229,73 @@ async function crawl() {
   }
 }
 
-function renderChannels(list) {
+/* ---------- режим «Шымкент»: собранное сборщиком и автообновление ---------- */
+const AUTO_MIN = 5;
+function stopAuto() {
+  clearTimeout(state.timer);
+  state.timer = null;
+  state.nextAt = 0;
+  tickAuto();
+}
+function tickAuto() {
+  const el = $("#autoInfo");
+  if (!state.nextAt) { el.textContent = ""; return; }
+  const left = Math.max(0, Math.round((state.nextAt - Date.now()) / 1000));
+  el.innerHTML = `${icon("clock")}Панель сама проверит новое через ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+}
+setInterval(tickAuto, 1000);
+
+async function shym(quiet = false) {
+  clearTimeout(state.timer);
+  if (!quiet) busy(true, "Забираю то, что сборщик собрал в каналах Шымкента, и проверяю…");
+  try {
+    const r = await api("api/shym", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ use_llm: $("#useLlm").checked }) });
+    state.cases = r.cases;
+    renderAll(r.new_ids);
+    renderChannels(r.channels, r.collector);
+    const fresh = r.cases.filter((c) => r.new_ids.includes(c.id));
+    const local = fresh.filter((c) => c.city === state.city.id);
+    const risky = local.filter((c) => c.level !== "low");
+    const col = r.collector;
+    let t = col
+      ? `Сборщик обходит каналы сам с ${fmtTime(col.since)}: обходов <b>${col.runs}</b>, последний в <b>${fmtTime(col.last_run).split(", ").pop()}</b>. `
+      : `Обошёл каналы Шымкента за <b>${fmtSec(r.elapsed)} с</b>. `;
+    t += fresh.length
+      ? `Новых публикаций: <b>${fresh.length}</b>, про ${esc(state.city.label)}: <b>${local.length}</b>, с признаками схем: <b>${risky.length}</b>.`
+      : "Новых публикаций с прошлой проверки нет.";
+    info(t);
+    const first = risky.find((c) => c.level === "high") || risky[0] || (state.selected ? null : local[0]);
+    if (first && (!state.selected || window.innerWidth > 1100)) openCase(first.id, "#case", false);
+  } catch (e) {
+    if (!quiet) info(esc(e.message), true);
+  } finally {
+    if (!quiet) busy(false);
+    if ($("#autoShym").checked) {
+      state.nextAt = Date.now() + AUTO_MIN * 60000;
+      state.timer = setTimeout(() => shym(true), AUTO_MIN * 60000);
+    }
+    tickAuto();
+  }
+}
+
+const ago = (ts) => {
+  const m = Math.round((Date.now() - new Date(ts)) / 60000);
+  return isNaN(m) ? "" : m < 1 ? "только что" : m < 60 ? `${m} мин назад` : `${Math.floor(m / 60)} ч назад`;
+};
+
+function renderChannels(list, collector) {
   const el = $("#channels");
   el.classList.toggle("hidden", !list.length);
-  list = [...list].sort((a, b) => (b.high * 10 + b.medium) - (a.high * 10 + a.medium));
-  el.innerHTML = `<div class="panel-title">Каналы автопоиска</div>` + list.map((c) => `
+  list = [...list].sort((a, b) => (b.high * 10 + b.medium) - (a.high * 10 + a.medium) || (b.local || 0) - (a.local || 0));
+  const title = collector !== undefined ? `Каналы ${esc(state.city.label)}а` : "Каналы автопоиска";
+  el.innerHTML = `<div class="panel-title">${title}</div>` + list.map((c) => `
     <div class="ch ${c.high ? "high" : c.medium ? "medium" : ""}">
       <div><a href="https://t.me/s/${esc(c.channel)}" target="_blank" rel="noopener">@${esc(c.channel)}</a>
         ${c.title ? `<span class="muted"> · ${esc(c.title)}</span>` : ""}
         <span class="muted"> · ${c.from ? "найден через @" + esc(c.from) : "стартовый"}</span></div>
-      <div class="chm">${c.error ? "нет открытой ленты" :
-        `${c.posts} постов · <b class="hi">${c.high}</b> высоких · <b class="me">${c.medium}</b> средних ${c.tracks.map(trkTag).join(" ")}`}</div>
+      <div class="chm">${c.error ? "нет открытой ленты" : collector && !c.last ? "в очереди на первый обход" :
+        `${c.posts} постов${c.local != null ? ` · про ${esc(state.city.label)}: ${c.local}` : ""} · <b class="hi">${c.high}</b> высоких · <b class="me">${c.medium}</b> средних ${c.tracks.map(trkTag).join(" ")}`}${c.last ? ` · обход ${ago(c.last)}` : ""}</div>
       ${c.signs.length ? `<div class="chm">${c.signs.map(esc).join(" · ")}</div>` : ""}
     </div>`).join("");
 }
@@ -227,13 +303,14 @@ function renderChannels(list) {
 /* ---------- сводка, фильтры, очередь ---------- */
 function renderAll(newIds = []) {
   $("#hero").classList.toggle("hidden", state.cases.length > 0);
+  $("#cityLabel").textContent = state.onlyCity ? `Только ${state.city.label}` : "Весь Казахстан";
   renderStats();
   renderFilters();
   renderQueue(newIds);
 }
 
 function renderStats() {
-  const cs = state.cases;
+  const cs = visible();
   if (!cs.length) { $("#stats").innerHTML = ""; return; }
   const n = (f) => cs.filter(f).length;
   const risky = cs.filter((c) => c.level !== "low");
@@ -241,7 +318,7 @@ function renderStats() {
   risky.forEach((c) => { if (c.track) tr[c.track]++; });
   const sum = Math.max(1, risky.length);
   $("#stats").innerHTML = `
-    <div class="kpi"><div class="n">${cs.length}</div><div class="l">проверено</div></div>
+    <div class="kpi"><div class="n">${cs.length}</div><div class="l">${state.onlyCity ? "про " + esc(state.city.label) : "проверено"}</div></div>
     <div class="kpi high"><div class="n">${n((c) => c.level === "high")}</div><div class="l">высокий риск</div></div>
     <div class="kpi medium"><div class="n">${n((c) => c.level === "medium")}</div><div class="l">средний риск</div></div>
     <div class="kpi linked"><div class="n">${n((c) => c.network_n)}</div><div class="l">со связями</div></div>
@@ -252,10 +329,10 @@ function renderStats() {
 }
 
 function renderFilters() {
-  const cs = state.cases;
+  const cs = visible();
   const el = $("#filters");
-  el.classList.toggle("hidden", !cs.length);
-  if (!cs.length) return;
+  el.classList.toggle("hidden", !state.cases.length);
+  if (!state.cases.length) return;
   const cnt = (f) => cs.filter(f).length;
   const lv = [["high", "Высокий"], ["medium", "Средний"], ["low", "Низкий"]];
   el.innerHTML =
@@ -273,10 +350,14 @@ function renderFilters() {
 }
 
 function renderQueue(newIds = []) {
-  const list = state.cases.filter((c) => (!state.flevel || c.level === state.flevel) && (!state.ftrack || (c.track === state.ftrack && c.level !== "low")));
+  const list = visible().filter((c) => (!state.flevel || c.level === state.flevel) && (!state.ftrack || (c.track === state.ftrack && c.level !== "low")));
   if (!state.cases.length) { $("#queue").innerHTML = ""; return; }
-  if (!list.length) { $("#queue").innerHTML = `<div class="qempty">По этому фильтру публикаций нет.</div>`; return; }
-  $("#queue").innerHTML = list.map((c) => `
+  const hidden = state.cases.length - visible().length;
+  const more = hidden ? `<div class="qhidden">${icon("pin")}<span>Скрыто <b>${hidden}</b>: другой город или город не указан.</span>
+    <button class="linkbtn" id="showAll">Показать все</button></div>` : "";
+  if (!list.length) {
+    $("#queue").innerHTML = `<div class="qempty">По этому фильтру публикаций нет.</div>` + more;
+  } else $("#queue").innerHTML = list.map((c) => `
     <div class="item ${c.level} ${newIds.includes(c.id) ? "fresh" : ""} ${state.selected === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
       ${ring(c.score, c.level)}
       <div class="ibody">
@@ -284,6 +365,7 @@ function renderQueue(newIds = []) {
           <span class="badge ${c.level}">${LEVEL_SHORT[c.level]}</span>${c.level !== "low" ? trkTag(c.track) : ""}
           ${platIcon(c.platform)}<span class="acc">${esc(c.account)}</span>
           <span class="time">${fmtTime(c.ts)}</span>
+          ${!state.onlyCity && c.city ? `<span class="city ${c.city === state.city.id ? "here" : ""}">${icon("pin")}${esc(c.city_label)}</span>` : ""}
           ${c.has_image ? `<span class="flag" title="Есть скриншот">${icon("image")}</span>` : ""}
           ${c.has_audio ? `<span class="flag" title="Есть транскрипция эфира">${icon("mic")}</span>` : ""}
           ${c.network_n ? `<span class="flag net" title="Связан с другими аккаунтами">${icon("network")}${c.network_n}</span>` : ""}
@@ -295,8 +377,10 @@ function renderQueue(newIds = []) {
           ${c.feedback ? `<span class="fb ${c.feedback.verdict}">${FB[c.feedback.verdict]}</span>` : ""}
         </div>
       </div>
-    </div>`).join("");
+    </div>`).join("") + more;
   $$("#queue .item").forEach((el) => el.addEventListener("click", () => openCase(el.dataset.id)));
+  const all = $("#showAll");
+  if (all) all.addEventListener("click", () => { $("#onlyCity").checked = false; $("#onlyCity").dispatchEvent(new Event("change")); });
 }
 
 /* ---------- карточка ---------- */
@@ -325,7 +409,7 @@ function highlight(text, spans, titles) {
   for (const s of sorted) {
     if (s.start < pos || s.end <= s.start) continue;
     out += esc(cut(pos, s.start));
-    const cls = s.kind === "counter" ? "counter" : s.track || "lottery";
+    const cls = s.kind === "counter" ? "counter" : s.kind === "geo" ? "geo" : s.track || "lottery";
     out += `<mark class="${cls}" title="${esc(titles[s.code] || s.code)}">${esc(cut(s.start, s.end))}</mark>`;
     pos = s.end;
   }
@@ -374,6 +458,9 @@ async function openCase(id, target = "#case", scroll = true) {
 function renderCase(v, el) {
   const titles = {};
   [...v.features, ...v.counters].forEach((f) => (titles[f.code] = f.code + ": " + f.title));
+  titles.GEO = "Привязка к городу";
+  const g = v.geo || { evidence: [] };
+  const geoWhy = [...new Map(g.evidence.map((q) => [q.why + "|" + String(q.text).toLowerCase(), q])).values()].slice(0, 4);
   const main = v.track || v.track_hint;
   const mainFeats = v.features.filter((f) => f.track === main);
   const otherFeats = v.features.filter((f) => f.track !== main);
@@ -410,6 +497,9 @@ function renderCase(v, el) {
         <div class="tb ${t}"><div class="tl"><b>${TRACK_SHORT[t]}</b><span>${x.score} · ${LEVEL_SHORT[x.level]}</span></div>
         <div class="bar"><i style="width:${x.score}%"></i></div></div>`).join("")}
       </div>
+      <div class="geoline ${g.city === state.city.id ? "here" : ""}">${icon("pin")}<b>${esc(g.label || "город не указан")}</b>
+        ${geoWhy.map((q) => `<span class="gq" title="${esc(q.why)}">${q.src === "network" ? esc(q.text) : "«" + esc(q.text) + "»"}<i>${esc(GEO_SRC[q.src] || q.src)}</i></span>`).join("")}
+        ${!geoWhy.length && !g.city ? `<span class="muted">нет названия города, района, телефона 7252 или городского аккаунта</span>` : ""}</div>
       ${v.computed.length ? `<div class="calcs">${v.computed.map((c) => `
         <div class="calc"><div class="k">${esc(c.label)}</div><div class="v">${esc(c.value)}</div>${calcExtra(c) ? `<div class="x">${esc(calcExtra(c))}</div>` : ""}</div>`).join("")}</div>` : ""}
     </div>
@@ -422,7 +512,8 @@ function renderCase(v, el) {
     <div class="sec">
       <div class="sec-t">${icon("eye")}Публикация
         <span class="lgd">${main ? `<span><i style="background:var(--${main}-mark);box-shadow:inset 0 -2px 0 var(--${main})"></i>признак</span>` : ""}
-        ${v.counters.length ? `<span><i style="background:var(--ok-mark);box-shadow:inset 0 -2px 0 var(--ok)"></i>снижает риск</span>` : ""}</span></div>
+        ${v.counters.length ? `<span><i style="background:var(--ok-mark);box-shadow:inset 0 -2px 0 var(--ok)"></i>снижает риск</span>` : ""}
+        ${geoWhy.some((q) => q.seg != null) ? `<span><i style="background:var(--geo-mark);box-shadow:inset 0 -2px 0 var(--geo)"></i>город</span>` : ""}</span></div>
       ${textSeg && textSeg.text ? `<div class="post">${highlight(textSeg.text, hl(textSeg.i), titles)}</div>` : ""}
       ${bioSeg ? `<div class="label">${icon("user")}Описание профиля</div><div class="post">${highlight(bioSeg.text, hl(bioSeg.i), titles)}</div>` : ""}
       ${ocrSeg ? `<div class="label">${icon("image")}Скриншот и распознанный текст</div>
@@ -494,7 +585,7 @@ $("#brandLink").addEventListener("click", (e) => { e.preventDefault(); showTab("
 /* ---------- граф ---------- */
 let cy = null;
 async function loadGraph() {
-  const g = await api("api/graph");
+  const g = await api("api/graph" + (state.onlyCity ? "?city=" + state.city.id : ""));
   const empty = !g.nodes.length;
   $("#graphEmpty").classList.toggle("hidden", !empty);
   $(".graphbody").classList.toggle("hidden", empty);
@@ -634,7 +725,7 @@ async function loadMetrics() {
 
 /* ---------- старт ---------- */
 paintIcons();
-setSource("demo");
+setSource("shym");
 showGuide();
 loadStatus().catch(() => {});
 api("api/cases").then((c) => {

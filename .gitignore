@@ -12,3 +12,4 @@ deploy/cloudflare/public/
 deploy/pages/public/
 # внутренние заметки команды
 docs/
+data/shymkent/

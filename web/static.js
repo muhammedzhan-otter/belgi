@@ -142,7 +142,7 @@
       }));
       for (const [b, posts, err] of fetched) {
         seen.add(b.name);
-        const res = j(W.crawl_channel(b.name, b.parent, JSON.stringify(posts)));
+        const res = j(W.crawl_channel(b.name, b.parent, JSON.stringify(posts), !!body.local));
         res.entry.error = posts.length ? null : (err || "нет открытой ленты");
         report.push(res.entry);
         for (const [ref, w] of Object.entries(res.refs)) {
@@ -155,6 +155,56 @@
     if (body.use_llm && await llmPass(newIds)) fin = j(W.cases());
     return { channels: report, elapsed: +((performance.now() - t0) / 1000).toFixed(1), new_ids: newIds,
              cases: fin.cases, stats: fin.stats };
+  }
+
+  // режим «Шымкент»: посты, которые сборщик в облаке собрал по расписанию (deploy/cloudflare/src/shym.js)
+  async function shym(body) {
+    const t0 = performance.now();
+    const getFeed = async () => { try { return await (await fetch("api/shym/feed")).json(); } catch (e) { return { meta: null, posts: {} }; } };
+    let feed = await getFeed();
+    if (!feed.meta || !feed.meta.runs) {
+      await fetch("api/shym/run", { method: "POST" }).catch(() => {});
+      feed = await getFeed();
+    }
+    const city = j(W.status(false, "")).city;
+    if (!feed.meta || !feed.meta.runs) {
+      // сборщик недоступен: обходим каналы города прямо из браузера
+      const r = await crawl({ seeds: city.seeds.join(","), max_channels: 8, use_llm: body.use_llm, local: true });
+      return { ...r, collector: null, found: r.new_ids.length };
+    }
+    const known = new Set(j(W.cases()).cases.map((c) => c.id));
+    const posts = [];
+    for (const [name, list] of Object.entries(feed.posts)) {
+      const ch = feed.meta.channels[name] || {};
+      for (const p of list) {
+        if (known.has(p.id)) continue;
+        posts.push({ id: p.id, platform: "telegram", kind: "post", account: "@" + name, account_name: ch.title || name,
+                     ts: p.ts, url: p.url, text: p.text, image_src: p.img });
+      }
+    }
+    // схемы часто в картинке с короткой подписью: такие распознаём первыми
+    const ocrIds = new Set(posts.filter((p) => p.image_src).sort((a, b) => a.text.length - b.text.length)
+      .slice(0, body.ocr ?? 3).map((p) => p.id));
+    for (const p of posts) {
+      if (p.image_src) {
+        p.image_url = "api/tgimg?u=" + encodeURIComponent(p.image_src);
+        p.image = "tg";
+        if (ocrIds.has(p.id)) { try { p.ocr_text = await ocr(p.image_url); } catch (e) { p.ocr_text = ""; } }
+      }
+      delete p.image_src;
+    }
+    let res = j(W.ingest(JSON.stringify(posts)));
+    if (body.use_llm && await llmPass(res.new_ids)) Object.assign(res, j(W.cases()));
+    const channels = Object.entries(feed.meta.channels).map(([name, c]) => {
+      const mine = res.cases.filter((x) => x.account === "@" + name);
+      return { channel: name, title: c.title, from: c.from, last: c.last, error: c.error, posts: mine.length,
+               high: mine.filter((x) => x.level === "high").length, medium: mine.filter((x) => x.level === "medium").length,
+               local: mine.filter((x) => x.city === city.id).length,
+               tracks: [...new Set(mine.filter((x) => x.level !== "low" && x.track).map((x) => x.track))], signs: [] };
+    });
+    const { runs, since, last_run } = feed.meta;
+    return { ...res, channels, found: posts.length, elapsed: +((performance.now() - t0) / 1000).toFixed(1),
+             collector: { runs, since, last_run, every: 10 } };
   }
 
   window.BELGI_LOCAL = async (path, opts = {}) => {
@@ -187,6 +237,7 @@
         return res;
       }
       case "crawl": return crawl(body);
+      case "shym": return shym(body);
       case "cases": return j(W.cases());
       case "case": {
         const v = j(W.case(id));
@@ -209,7 +260,7 @@
       }
       case "feedback": return j(W.feedback(id, body.verdict));
       case "reset": return j(W.reset());
-      case "graph": return j(W.graph());
+      case "graph": return j(W.graph(new URLSearchParams(path.split("?")[1] || "").get("city") || ""));
       case "metrics": return j(W.metrics());
     }
     throw new Error("Неизвестный запрос " + path);

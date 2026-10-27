@@ -2,7 +2,7 @@
 import html
 from datetime import datetime
 
-from . import engine, evaluate, lexicon as lx
+from . import engine, evaluate, geo, lexicon as lx
 
 MAX_RESULTS = 600
 
@@ -43,7 +43,8 @@ def stats(S):
     rs = list(S["results"].values())
     return {"total": len(rs), "levels": {lv: sum(1 for r in rs if r["level"] == lv) for lv in engine.LEVELS},
             "tracks": {t: sum(1 for r in rs if r["track"] == t and r["level"] != "low") for t in lx.TRACKS},
-            "links": sum(1 for r in rs if r["network"])}
+            "links": sum(1 for r in rs if r["network"]),
+            "cities": {c or "none": sum(1 for r in rs if r["geo"]["city"] == c) for c in (geo.CITY, "other", "kz", None)}}
 
 
 def feedback(S, cid, verdict):
@@ -54,8 +55,8 @@ def feedback(S, cid, verdict):
     return r["feedback"]
 
 
-def graph(S):
-    rs = list(S["results"].values())
+def graph(S, city=None):
+    rs = [r for r in S["results"].values() if not city or r["geo"]["city"] == city]
     nodes, edges, seen, acc_level = [], [], set(), {}
     for r in rs:
         acc_level[r["account"]] = max(acc_level.get(r["account"], 0), engine.LEVELS.index(r["level"]))
@@ -90,8 +91,9 @@ def metrics():
     return _metrics["m"]
 
 
-def crawl_entry(name, parent, results):
-    """Строка отчёта автопоиска по одному каналу и ссылки на другие каналы с весом."""
+def crawl_entry(name, parent, results, local=False):
+    """Строка отчёта автопоиска по одному каналу и ссылки на другие каналы с весом.
+    local: режим «Шымкент», вперёд идут каналы города и ссылки из шымкентских постов."""
     from .crawl import channel_refs
     levels = [r["level"] for r in results]
     risky = [r for r in results if r["level"] != "low"]
@@ -103,11 +105,14 @@ def crawl_entry(name, parent, results):
     refs = {}
     for r in results:
         weight = {"high": 3, "medium": 2, "low": 1}[r["level"]]
+        if local and r["geo"]["city"] == geo.CITY:
+            weight += 2
         for ref in channel_refs(" ".join(s["text"] for s in r["segments"])):
             if ref != name:
-                refs[ref] = max(refs.get(ref, 0), weight)
+                refs[ref] = max(refs.get(ref, 0), weight + (2 if local and geo.HANDLE.search(ref) else 0))
     entry = {"channel": name, "from": parent, "posts": len(results), "error": None,
              "high": levels.count("high"), "medium": levels.count("medium"),
+             "local": sum(1 for r in results if r["geo"]["city"] == geo.CITY),
              "tracks": sorted({r["track"] for r in risky if r["track"]}),
              "signs": [k for k, _ in sorted(top.items(), key=lambda kv: -kv[1])[:3]],
              "title": results[0].get("account_name") if results else None}
@@ -138,6 +143,7 @@ h1{{font-size:20px;margin:0 0 4px}}table{{border-collapse:collapse;width:100%;ma
 <table><tr><th>Источник</th><td>{e(v['platform'] or '')} · {e(v['account'] or '')} {('· ' + e(v['group'])) if v.get('group') else ''}</td></tr>
 <tr><th>Дата публикации</th><td>{e(_dt(v['ts']))}</td></tr>
 <tr><th>Ссылка</th><td>{e(v['url'] or 'демо-данные, ссылки нет')}</td></tr>
+<tr><th>Привязка к городу</th><td>{e(_geo(v['geo']))}</td></tr>
 <tr><th>Направление</th><td>{e(v['track_ru'] or 'признаки схем не найдены')}</td></tr>
 <tr><th>Уровень риска</th><td><b>{e(v['level_ru'])}</b> ({v['score']} из 100)</td></tr></table>
 <h3>Текст публикации</h3><div class=box>{text or '—'}</div>
@@ -147,6 +153,11 @@ h1{{font-size:20px;margin:0 0 4px}}table{{border-collapse:collapse;width:100%;ma
 <h3>Обстоятельства, снижающие риск</h3><ul>{cnt}</ul>
 <p>Проверил специалист: ____________________ &nbsp; Решение: ____________________</p>
 </body></html>"""
+
+
+def _geo(g):
+    why = "; ".join(dict.fromkeys(f"«{q['text']}» ({q['why']})" for q in g["evidence"]))
+    return g["label"] + (": " + why if why else "")
 
 
 def _dt(ts):
