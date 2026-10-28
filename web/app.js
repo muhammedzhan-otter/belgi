@@ -56,7 +56,6 @@ const LEVEL = { high: "Высокий риск", medium: "Средний рис�
 const LEVEL_SHORT = { high: "высокий", medium: "средний", low: "низкий" };
 const TRACK = { lottery: "Розыгрыш с платным участием", casino: "Скрытая реклама казино", pyramid: "Финансовая пирамида" };
 const TRACK_SHORT = { lottery: "Розыгрыш", casino: "Казино", pyramid: "Пирамида" };
-const TRACK_ICON = { lottery: "ticket", casino: "dice", pyramid: "pyramid" };
 const LANG = { ru: "русский", kk: "казахский", mix: "смешанный", translit: "транслит" };
 const FB = { confirmed: "Признаки подтверждены", false_positive: "Ложное срабатывание", sent: "Отмечено к передаче" };
 const ENT_ICON = { card: "card", phone: "phone", iban: "card", promo: "tag", link: "link", mention: "at" };
@@ -117,16 +116,6 @@ const srcInfo = (q) => {
   if (q.src === "asr") return { i: "mic", t: q.t != null ? `эфир ${Math.floor(q.t / 60)}:${String(Math.floor(q.t % 60)).padStart(2, "0")}` : "эфир" };
   return { text: { i: "text", t: "текст" }, ocr: { i: "image", t: "скриншот" }, bio: { i: "user", t: "профиль" } }[q.src] || { i: "text", t: q.src };
 };
-function ring(score, level, size = 46) {
-  const r = 19, c = 2 * Math.PI * r, v = Math.max(0, Math.min(100, score || 0));
-  return `<div class="ring ${level}" style="width:${size}px;height:${size}px"><svg viewBox="0 0 46 46">
-    <circle cx="23" cy="23" r="${r}" fill="none" stroke="#e8edf4" stroke-width="5"/>
-    <circle cx="23" cy="23" r="${r}" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(v / 100) * c} ${c}"/>
-  </svg><b>${v}</b></div>`;
-}
-const platIcon = (p) => `<span class="plat ${p}" title="${esc(PLAT_NAME[p] || p)}">${icon(p === "manual" ? "manual" : (I[p] ? p : "text"))}</span>`;
-const trkTag = (t) => t ? `<span class="trk ${t}">${icon(TRACK_ICON[t])}${TRACK_SHORT[t]}</span>` : "";
-
 /* ---------- статус ---------- */
 async function loadStatus() {
   const s = await api("api/status");
@@ -148,7 +137,7 @@ function setSource(src) {
   $("#tgOpts").classList.toggle("hidden", src !== "telegram");
   $("#crawlOpts").classList.toggle("hidden", src !== "crawl");
   $("#srcHint").textContent = HINT[src];
-  $("#scanBtn").innerHTML = icon("play") + (src === "crawl" ? "Начать автопоиск" : "Найти и проверить");
+  $("#scanBtn").textContent = src === "crawl" ? "Начать автопоиск" : "Найти и проверить";
 }
 $("#scanBtn").addEventListener("click", scan);
 $("#heroAll").addEventListener("click", () => checkAll());
@@ -238,28 +227,18 @@ async function crawl() {
   }
 }
 
-/* ---------- «Проверить всё»: строки хода сами становятся итогом ---------- */
-// демо-лента и настоящие каналы показаны отдельно, их числа нигде не складываются
-const ROWS = {
-  engine: { t: "Движок" },
-  demo: { t: "Публикации", act: "Разбор" },
-  net: { t: "Связи", act: "Граф" },
-  self: { t: "Самопроверка", act: "Как считали",
-          tip: "Трудные: бесплатные конкурсы, банк, официальная лотерея, легальный букмекер, новости. Лента написана вместе со словарями, это проверка, что всё работает." },
-  shym: { t: "Публикации", act: "Список" },
-  llm: { t: "LLM" },
-};
+/* ---------- «Проверить всё»: итог двумя колонками, демо и настоящие каналы не складываются ---------- */
 const ACT = {
   demo: () => {
     state.fsrc = "demo";
     state.flevel = null;
     state.ftrack = null;
     renderAll();
+    openTop(true);
     if (wide()) {
-      openTop(true);
       $("#filters").scrollIntoView({ behavior: "smooth", block: "nearest" });
       flash($("#case"));
-    } else openTop(true);
+    }
   },
   net: () => showTab("graph"),
   self: () => showTab("metrics"),
@@ -276,58 +255,25 @@ function step(key, status, text = "") {
   renderRun();
 }
 
-function rowText(k) {
-  const cs = state.cases;
-  if (k === "demo") {
-    const demo = cs.filter(isFeed);
-    const base = state.onlyCity ? demo.filter((c) => c.city === state.city.id) : demo;
-    const risky = base.filter((c) => c.level !== "low").length;
-    const t = state.demoSec != null ? ` за ${fmtSec(state.demoSec.toFixed(2))}&nbsp;с` : "";
-    return `<b class="num ${risky ? "bad" : "good"}">${risky}</b> с признаками схем из ${base.length}` +
-      (state.onlyCity ? ` про ${esc(state.city.label)} · всего ${demo.length}${t}` : t);
-  }
-  if (k === "net") {
-    const n = state.net;
-    return n && n.nets ? `${n.nets} ${plural(n.nets, "сеть", "сети", "сетей")}, ${n.accounts} ${plural(n.accounts, "аккаунт", "аккаунта", "аккаунтов")} с общими реквизитами` : "Общих реквизитов нет";
-  }
-  if (k === "self") {
-    const m = state.self;
-    return m ? `По всей ленте: ложных ${m.fp} из ${m.neg} трудных, найдено ${m.tp} из ${m.pos}` : "";
-  }
-  if (k === "shym") {
-    const all = cs.filter((c) => state.shymAccounts.has(c.account));
-    const posts = all.filter(inCity);
-    const chans = new Set(all.map((c) => c.account)).size;
-    const risky = posts.filter((c) => c.level !== "low").length;
-    const head = `${all.length} из ${chans} ${plural(chans, "канала", "каналов", "каналов")}` +
-      (state.onlyCity ? `, про ${esc(state.city.label)} ${posts.length}` : "") + ", ";
-    const tail = risky ? `с признаками схем: <b class="num bad">${risky}</b>` : "признаков схем нет";
-    if (state.shymNew == null) return head + tail;
-    return (state.shymNew ? `Новых: ${state.shymNew}. Всего ` : "Новых нет. Всего ") + head + tail;
-  }
-  return "";
-}
-
-function rowSub(k) {
-  if (k !== "shym") return "";
-  const c = state.collector;
-  const o = state.ocr;
-  const ocr = o && o.total ? (o.done < o.total ? ` Картинки: прочитано ${o.done} из ${o.total}…` : ` Картинки прочитаны: ${o.total}.`) : "";
-  if (!c) return (state.shymSec != null ? (window.BELGI_LOCAL ? `Сборщик недоступен, каналы прочитаны из браузера за ${fmtSec(state.shymSec)} с.`
-    : `Сервер обошёл каналы за ${fmtSec(state.shymSec)} с.`) : "") + ocr;
-  return `Сборщик обходит их сам каждые 10 минут, последний раз в ${hhmm(c.last_run)}.` + ocr;
-}
-
-function rowHtml(k) {
-  const r = state.run[k];
+const runOf = (k) => state.run[k] || null;
+const spin = () => `<span class="spin" aria-hidden="true"></span>`;
+const act = (k, label) => `<button class="ract" data-act="${k}">${label} →</button>`;
+// строка вторичного шага: идёт, ждёт, ошибка или готовый текст
+function line(k, done) {
+  const r = runOf(k);
   if (!r) return "";
-  const def = ROWS[k];
-  const mark = r.status === "run" ? `<span class="spin"></span>` : icon({ done: "checkc", err: "x" }[r.status] || "circle");
-  const text = r.status === "done" && !r.text ? rowText(k) : esc(r.text);
-  const sub = r.status === "done" || (r.status === "run" && state.ranAt) ? rowSub(k) : "";
-  const act = def.act && r.status === "done" ? `<button class="ract" data-act="${k}">${def.act} ›</button>` : "";
-  return `<div class="rs is-${r.status}"${def.tip ? ` title="${esc(def.tip)}"` : ""}>${mark}
-    <div class="rt"><b>${def.t}</b> <span>${text}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div>${act}</div>`;
+  if (r.status === "run") return `<li class="is-run">${spin()}${esc(r.text)}</li>`;
+  if (r.status === "wait") return `<li class="is-wait">${esc(r.text)}</li>`;
+  if (r.status === "err") return `<li class="is-err">${esc(r.text)}</li>`;
+  return `<li>${r.text ? esc(r.text) : done}</li>`;
+}
+// главное число колонки: пока идёт проверка, вместо числа ход
+function headline(k, n, label) {
+  const r = runOf(k);
+  if (!r) return "";
+  if (r.status === "run" || r.status === "wait") return `<div class="headline is-${r.status}">${r.status === "run" ? spin() : ""}${esc(r.text)}</div>`;
+  if (r.status === "err") return `<div class="headline is-err">${esc(r.text)}</div>`;
+  return `<div class="headline"><b class="n ${n ? "bad" : ""}">${n}</b><span>${label}</span></div>`;
 }
 
 function renderRun() {
@@ -336,10 +282,49 @@ function renderRun() {
   const any = Object.keys(R).length > 0;
   el.classList.toggle("hidden", !any);
   if (!any) { el.innerHTML = ""; return; }
-  el.innerHTML = rowHtml("engine") +
-    (R.demo || R.net || R.self ? `<div class="grp demo"><div class="glabel" title="Публикации написаны командой по мотивам реальных казахстанских дел">Демо-лента · синтетика</div>
-      ${rowHtml("demo")}${rowHtml("net")}${rowHtml("self")}</div>` : "") +
-    (R.shym || R.llm ? `<div class="grp real"><div class="glabel"><i class="live"></i>Настоящие каналы ${esc(state.city.label)}а</div>${rowHtml("shym")}${rowHtml("llm")}</div>` : "");
+  const cs = state.cases;
+  const city = esc(state.city.label);
+
+  // демо-лента
+  const demo = cs.filter(isFeed);
+  const dBase = state.onlyCity ? demo.filter((c) => c.city === state.city.id) : demo;
+  const dRisky = dBase.filter((c) => c.level !== "low").length;
+  const n = state.net, m = state.self;
+  const demoCol = R.demo || R.net || R.self ? `
+    <section class="col">
+      <h3>Демо-лента <span class="tag demo" title="Публикации написаны командой по мотивам реальных казахстанских дел">синтетические данные</span></h3>
+      ${headline("demo", dRisky, `${plural(dRisky, "публикация", "публикации", "публикаций")} с признаками схем`)}
+      ${R.demo && R.demo.status === "done" ? `<p class="meta">из ${dBase.length}${state.onlyCity ? ` про ${city}, всего ${demo.length}` : ""}${state.demoSec != null ? `, разбор за ${fmtSec(state.demoSec.toFixed(2))}&nbsp;с` : ""}</p>` : ""}
+      <ul class="lines">
+        ${line("net", (n && n.nets ? `Связи: ${n.nets} ${plural(n.nets, "сеть", "сети", "сетей")}, ${n.accounts} ${plural(n.accounts, "аккаунт", "аккаунта", "аккаунтов")} с общими реквизитами` : "Связи: общих реквизитов нет") + " " + act("net", "Граф"))}
+        ${line("self", m ? `<span title="Трудные: бесплатные конкурсы, банк, официальная лотерея, легальный букмекер, новости. Лента написана вместе со словарями, это проверка, что всё работает.">Самопроверка по всей ленте: ложных ${m.fp} из ${m.neg} трудных, найдено ${m.tp} из ${m.pos}</span> ` + act("self", "Как считали") : "")}
+      </ul>
+      ${R.demo && R.demo.status === "done" && dRisky ? `<div class="colact">${act("demo", "Открыть главный случай")}</div>` : ""}
+    </section>` : "";
+
+  // настоящие каналы
+  const all = cs.filter((c) => state.shymAccounts.has(c.account));
+  const posts = all.filter(inCity);
+  const chans = new Set(all.map((c) => c.account)).size;
+  const rRisky = posts.filter((c) => c.level !== "low").length;
+  const col = state.collector, o = state.ocr;
+  const fresh = state.shymNew == null ? "" : state.shymNew ? `, новых с прошлой проверки ${state.shymNew}` : ", новых с прошлой проверки нет";
+  const realCol = R.shym || R.llm ? `
+    <section class="col">
+      <h3>Каналы ${city}а <span class="tag live">настоящие данные</span></h3>
+      ${headline("shym", rRisky, `${plural(rRisky, "публикация", "публикации", "публикаций")} с признаками схем`)}
+      ${R.shym && R.shym.status === "done" ? `<p class="meta">${all.length} ${plural(all.length, "публикация", "публикации", "публикаций")} из ${chans} ${plural(chans, "канала", "каналов", "каналов")}${state.onlyCity ? `, про ${city} ${posts.length}` : ""}${fresh}</p>` : ""}
+      <ul class="lines">
+        ${R.shym && R.shym.status === "done" ? `<li>${col ? `Сборщик обходит каналы сам каждые 10 минут, последний обход в ${hhmm(col.last_run)}`
+          : state.shymSec != null ? (window.BELGI_LOCAL ? `Сборщик недоступен, каналы прочитаны из браузера за ${fmtSec(state.shymSec)} с` : `Сервер обошёл каналы за ${fmtSec(state.shymSec)} с`) : ""}</li>` : ""}
+        ${o && o.total ? (o.done < o.total ? `<li class="is-run">${spin()}Читаю картинки из постов: ${o.done} из ${o.total}</li>` : `<li>Картинки из постов прочитаны: ${o.total}</li>`) : ""}
+        ${line("llm", "")}
+      </ul>
+      ${R.shym && R.shym.status === "done" && all.length ? `<div class="colact">${act("shym", "Каналы и публикации")}</div>` : ""}
+    </section>` : "";
+
+  const eng = R.engine ? `<p class="engine ${R.engine.status === "err" ? "is-err" : ""}">${R.engine.status === "run" ? spin() : ""}${esc(R.engine.text)}</p>` : "";
+  el.innerHTML = eng + `<div class="cols">${demoCol}${realCol}</div>`;
   $$("[data-act]", el).forEach((b) => b.addEventListener("click", () => ACT[b.dataset.act]()));
 }
 
@@ -393,7 +378,7 @@ function showReal() {
     if (top) openCase(top.id, "#case", false);
     else {
       state.selected = null;
-      $("#case").innerHTML = `<div class="empty-state">${icon("eye")}<b>Выберите публикацию из списка</b></div>`;
+      $("#case").innerHTML = `<div class="empty-state"><b>Выберите публикацию из списка</b></div>`;
     }
   }
   $("#filters").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -513,10 +498,10 @@ async function checkAll(auto = false) {
 // Демо-лента всегда разбирается одними правилами, поэтому её числа не меняются на глазах у жюри.
 async function llmRow(ids, gen) {
   if (!state.llmOn || !$("#useLlm").checked) { if (state.run.llm) { delete state.run.llm; renderRun(); } return; }
-  if (!ids.length) { if (!state.run.llm) step("llm", "done", "Спорных случаев нет"); return; }
+  if (!ids.length) { if (!state.run.llm) step("llm", "done", "LLM: спорных постов нет"); return; }
   if (state.llmBusy) { state.llmQueue = (state.llmQueue || []).concat(ids); return; }
   state.llmBusy = true;
-  step("llm", "run", "Уточняет спорные случаи…");
+  step("llm", "run", "LLM уточняет спорные посты");
   try {
     const r = await post("api/review", { ids });
     if (gen !== state.gen) return;
@@ -527,11 +512,11 @@ async function llmRow(ids, gen) {
       if (state.selected && ids.includes(state.selected)) openCase(state.selected, "#case", false);
     }
     const changed = r.cases.filter((c) => ids.includes(c.id) && c.llm && c.llm.before && c.llm.before !== c.llm.after).length;
-    step("llm", "done", !total ? "Спорных случаев нет" : !used ? "Не ответила, остался результат правил"
-      : used < total ? `Разобрала ${used} из ${total}, остальные остались по правилам`
-      : `Разобрала спорных: ${used}, ${changed ? "уровень изменился у " + changed : "уровни не изменились"}`);
+    step("llm", "done", !total ? "LLM: спорных постов нет" : !used ? "LLM не ответила, остался результат правил"
+      : used < total ? `LLM разобрала ${used} из ${total} спорных, остальные остались по правилам`
+      : `LLM разобрала спорных: ${used}, ${changed ? "уровень изменился у " + changed : "уровни не изменились"}`);
   } catch (e) {
-    if (gen === state.gen) step("llm", "err", "Не ответила, остался результат правил");
+    if (gen === state.gen) step("llm", "err", "LLM не ответила, остался результат правил");
   } finally {
     if (gen === state.gen) {
       state.llmBusy = false;
@@ -585,22 +570,25 @@ function scheduleAuto() {
   if ($("#autoShym").checked && state.ranAt) state.timer = setTimeout(() => checkAll(true), AUTO_MIN * 60000);
 }
 
-// список каналов виден по «Посты ›», вместе с фильтром «Каналы города»
+// таблица каналов видна по «Каналы и публикации», вместе с источником «Каналы города»
 function renderChannels() {
   const el = $("#channels");
   const list = [...state.channels].sort((a, b) => (b.high * 10 + b.medium) - (a.high * 10 + a.medium) || (b.posts || 0) - (a.posts || 0));
   el.classList.toggle("hidden", !list.length || state.fsrc !== "real");
   const ok = list.filter((c) => !c.error).length;
   const local = (c) => state.cases.filter((x) => x.account === "@" + c.channel && x.city === state.city.id).length;
-  el.innerHTML = `<summary><b>Каналы ${esc(state.city.label)}а: ${ok}</b>${state.collector && state.collector.last_run ? `<span class="muted">обход в ${hhmm(state.collector.last_run)}</span>` : ""}</summary>` + list.map((c) => `
-    <div class="ch ${c.high ? "high" : c.medium ? "medium" : ""}">
-      <div><a href="https://t.me/s/${esc(c.channel)}" target="_blank" rel="noopener">@${esc(c.channel)}</a>
-        ${c.title ? `<span class="muted"> · ${esc(c.title)}</span>` : ""}
-        <span class="muted"> · ${c.from ? "найден через @" + esc(c.from) : "стартовый"}</span>
-        ${c.posts && local(c) / c.posts < 0.5 ? `<span class="demo-tag" title="Больше половины постов не про ${esc(state.city.label)}: в очередь попадают только посты про город">не городской</span>` : ""}</div>
-      <div class="chm">${c.error ? (c.error === "нет открытой ленты" ? c.error : "не открылся") : state.collector && !c.last ? "в очереди на первый обход" :
-        `${c.posts} ${plural(c.posts, "пост", "поста", "постов")} · <b class="hi">${c.high}</b> ${plural(c.high, "высокий", "высоких", "высоких")} · <b class="me">${c.medium}</b> ${plural(c.medium, "средний", "средних", "средних")} ${c.tracks.map(trkTag).join(" ")}`}${c.last ? ` · обход в ${hhmm(c.last)}` : ""}</div>
-    </div>`).join("");
+  el.innerHTML = `<summary>Каналы ${esc(state.city.label)}а: ${ok}${state.collector && state.collector.last_run ? `, последний обход в ${hhmm(state.collector.last_run)}` : ""}</summary>
+    <div class="tablewrap"><table class="tbl">
+      <tr><th>Канал</th><th class="num">Публикаций</th><th class="num">С признаками</th><th>Обход</th></tr>
+      ${list.map((c) => `<tr>
+        <td><a href="https://t.me/s/${esc(c.channel)}" target="_blank" rel="noopener">@${esc(c.channel)}</a>
+          <div class="muted">${[c.title ? esc(c.title) : "", c.from ? "найден через @" + esc(c.from) : "стартовый",
+            c.posts && local(c) / c.posts < 0.5 ? "не городской: в очередь попадают только посты про город" : ""].filter(Boolean).join(" · ")}</div></td>
+        <td class="num">${c.error ? "" : c.posts}</td>
+        <td class="num ${c.high || c.medium ? "bad" : ""}">${c.error ? "" : c.high + c.medium}</td>
+        <td>${c.error ? (c.error === "нет открытой ленты" ? c.error : "не открылся") : state.collector && !c.last ? "ждёт первого обхода" : c.last ? hhmm(c.last) : ""}</td>
+      </tr>`).join("")}
+    </table></div>`;
 }
 
 /* ---------- фильтры и очередь ---------- */
@@ -642,15 +630,19 @@ function renderFilters() {
   const cnt = (f) => cs.filter(f).length;
   const srcCount = (k) => state.cases.filter((c) => srcOf(c) === k && inCity(c)).length;
   const srcs = Object.keys(SRC).filter((k) => state.cases.some((c) => srcOf(c) === k));
-  const lv = [["high", "Высокий"], ["medium", "Средний"], ["low", "Низкий"]];
-  el.innerHTML =
-    `<label class="fcity ${state.onlyCity ? "on" : ""}" title="Только публикации, привязанные к городу: название, район, микрорайон, телефон 7252, городской аккаунт или связь со шымкентской схемой">
-      <input type="checkbox" id="onlyCity" ${state.onlyCity ? "checked" : ""}>${icon("pin")}Только ${esc(state.city.label)}</label>` +
-    (srcs.length > 1 ? `<span class="fsrc">${srcs.map((k) => `<button class="${state.fsrc === k ? "on" : ""}" data-src="${k}" title="${esc(SRC_TIP[k])}">${SRC[k]} <span class="c">${srcCount(k)}</span></button>`).join("")}</span>` : "") +
-    lv.filter(([k]) => { const n = cnt((c) => c.level === k); return (n && n !== cs.length) || state.flevel === k; })
-      .map(([k, t]) => `<button class="fchip ${state.flevel === k ? "on" : ""}" data-l="${k}">${t} <span class="c">${cnt((c) => c.level === k)}</span></button>`).join("") +
-    Object.keys(TRACK).filter((t) => cnt((c) => c.track === t && c.level !== "low") || state.ftrack === t)
-      .map((t) => `<button class="fchip ${state.ftrack === t ? "on" : ""}" data-t="${t}">${icon(TRACK_ICON[t])}${TRACK_SHORT[t]} <span class="c">${cnt((c) => c.track === t && c.level !== "low")}</span></button>`).join("");
+  const lv = [["high", "высокий"], ["medium", "средний"], ["low", "низкий"]].filter(([k]) => cnt((c) => c.level === k) || state.flevel === k);
+  const tr = Object.keys(TRACK).filter((t) => cnt((c) => c.track === t && c.level !== "low") || state.ftrack === t);
+  const opt = (attr, val, label, n, on) => `<button class="opt ${on ? "on" : ""}" ${attr}="${val}">${label}${n != null ? ` <span class="c">${n}</span>` : ""}</button>`;
+  el.innerHTML = `
+    <div class="frow">
+      ${srcs.length > 1 ? `<div class="seg fsrc">${srcs.map((k) => `<button class="${state.fsrc === k ? "on" : ""}" data-src="${k}" title="${esc(SRC_TIP[k])}">${SRC[k]} <span class="c">${srcCount(k)}</span></button>`).join("")}</div>` : ""}
+      <label class="check" title="Только публикации, привязанные к городу: название, район, микрорайон, телефон 7252, городской аккаунт или связь со шымкентской схемой">
+        <input type="checkbox" id="onlyCity" ${state.onlyCity ? "checked" : ""}>Только ${esc(state.city.label)}</label>
+    </div>
+    ${lv.length > 1 || tr.length ? `<div class="frow opts">
+      ${lv.length > 1 ? `<span class="fgroup"><span class="flabel">Уровень</span>${opt("data-l", "", "все", null, !state.flevel)}${lv.map(([k, t]) => opt("data-l", k, t, cnt((c) => c.level === k), state.flevel === k)).join("")}</span>` : ""}
+      ${tr.length ? `<span class="fgroup"><span class="flabel">Направление</span>${opt("data-t", "", "все", null, !state.ftrack)}${tr.map((t) => opt("data-t", t, TRACK_SHORT[t].toLowerCase(), cnt((c) => c.track === t && c.level !== "low"), state.ftrack === t)).join("")}</span>` : ""}
+    </div>` : ""}`;
   $("#onlyCity").addEventListener("change", (e) => {
     state.onlyCity = e.target.checked;
     renderAll();
@@ -663,9 +655,9 @@ function renderFilters() {
     state.ftrack = null;
     renderAll();
   }));
-  $$(".fchip", el).forEach((b) => b.addEventListener("click", () => {
-    if (b.dataset.l) state.flevel = state.flevel === b.dataset.l ? null : b.dataset.l;
-    if (b.dataset.t) state.ftrack = state.ftrack === b.dataset.t ? null : b.dataset.t;
+  $$(".opt", el).forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.l !== undefined) state.flevel = b.dataset.l || null;
+    if (b.dataset.t !== undefined) state.ftrack = b.dataset.t || null;
     renderAll();
   }));
 }
@@ -674,32 +666,26 @@ function renderQueue(newIds = []) {
   const list = visible().filter((c) => (!state.flevel || c.level === state.flevel) && (!state.ftrack || (c.track === state.ftrack && c.level !== "low")));
   if (!state.cases.length) { $("#queue").innerHTML = ""; return; }
   const hidden = state.cases.filter((c) => inSrc(c) && !inCity(c)).length;
-  const more = hidden ? `<div class="qhidden">${icon("pin")}<span>Скрыто <b>${hidden}</b>: другой город или город не указан.</span>
+  const more = hidden ? `<div class="qhidden"><span>Скрыто ${hidden}: другой город или город не указан.</span>
     <button class="linkbtn" id="showAll">Показать все</button></div>` : "";
-  $("#queue").innerHTML = more + (!list.length ? (hidden ? "" : `<div class="qempty">По этому фильтру публикаций нет.</div>`) : list.map((c) => `
-    <div class="item ${c.level} ${newIds.includes(c.id) ? "fresh" : ""} ${state.selected === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
-      ${ring(c.score, c.level)}
+  $("#queue").innerHTML = more + (!list.length ? (hidden ? "" : `<div class="qempty">По этому фильтру публикаций нет.</div>`) : `<div class="qlist">${list.map((c) => {
+    const tags = [PLAT_NAME[c.platform] || c.platform, !state.onlyCity && c.city ? c.city_label : "",
+      c.network_n ? `связи: ${c.network_n}` : "", c.has_image ? "скриншот" : "", c.has_audio ? "эфир" : "",
+      c.llm && c.llm.added && c.llm.added.length ? "уточнила LLM" : ""].filter(Boolean);
+    return `<div class="item ${c.level} ${newIds.includes(c.id) ? "fresh" : ""} ${state.selected === c.id ? "sel" : ""}" data-id="${esc(c.id)}" tabindex="0">
+      <div class="iscore">${c.score}</div>
       <div class="ibody">
-        <div class="imeta">
-          <span class="badge ${c.level}">${LEVEL_SHORT[c.level]}</span>${c.level !== "low" ? trkTag(c.track) : ""}
-          ${platIcon(c.platform)}<span class="acc">${esc(c.account)}</span>
-          ${c.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}
-          <span class="time">${fmtTime(c.ts)}</span>
-          ${!state.onlyCity && c.city ? `<span class="city ${c.city === state.city.id ? "here" : ""}">${icon("pin")}${esc(c.city_label)}</span>` : ""}
-          ${c.has_image ? `<span class="flag" title="Есть скриншот">${icon("image")}</span>` : ""}
-          ${c.has_audio ? `<span class="flag" title="Есть транскрипция эфира">${icon("mic")}</span>` : ""}
-          ${c.network_n ? `<span class="flag net" title="Связан с другими аккаунтами">${icon("network")}${c.network_n}</span>` : ""}
-          ${c.llm && c.llm.added && c.llm.added.length ? `<span class="flag" title="Признаки уточнила LLM">${icon("sparkle")}</span>` : ""}
-        </div>
+        <div class="ihead"><b class="lvl">${LEVEL[c.level]}${c.level !== "low" && c.track ? ` · ${TRACK_SHORT[c.track]}` : ""}</b><span class="time">${fmtTime(c.ts)}</span></div>
+        <div class="imeta"><span class="acc">${esc(c.account)}</span>${c.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}<span>${tags.map(esc).join(" · ")}</span></div>
         <div class="snip">${esc(c.snippet) || `<span class="muted">Пост из одной картинки</span>`}</div>
-        <div class="chips">
-          ${c.level !== "low" ? c.chips.map((x) => `<span class="chip">${esc(x)}</span>`).join("")
-            : c.ocr_pending ? `<span class="chip none">${icon("image")}картинка ещё не прочитана</span>` : `<span class="chip none">${esc(c.summary)}</span>`}
-          ${c.feedback ? `<span class="fb ${c.feedback.verdict}">${FB[c.feedback.verdict]}</span>` : ""}
-        </div>
+        ${c.level !== "low" ? `<div class="isigns">${c.chips.map(esc).join(" · ")}</div>` : c.ocr_pending ? `<div class="isigns muted">Картинка ещё не прочитана</div>` : ""}
+        ${c.feedback ? `<div class="fb ${c.feedback.verdict}">${FB[c.feedback.verdict]}</div>` : ""}
       </div>
-    </div>`).join(""));
-  $$("#queue .item").forEach((el) => el.addEventListener("click", () => openCase(el.dataset.id)));
+    </div>`; }).join("")}</div>`);
+  $$("#queue .item").forEach((el) => {
+    el.addEventListener("click", () => openCase(el.dataset.id));
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") openCase(el.dataset.id); });
+  });
   const all = $("#showAll");
   if (all) all.addEventListener("click", () => {
     state.onlyCity = false;
@@ -739,7 +725,7 @@ history.replaceState({ tab: "monitor" }, "");
 
 /* ---------- карточка ---------- */
 function showGuide() {
-  $("#case").innerHTML = `<div class="empty-state">${icon("eye")}<b>Здесь появится разбор главного случая</b>
+  $("#case").innerHTML = `<div class="empty-state"><b>Здесь появится разбор случая</b>
     <span>Цитата, где она найдена, и основание по каждому признаку.</span></div>`;
 }
 
@@ -763,19 +749,14 @@ function highlight(text, spans, titles) {
 
 function featHtml(f) {
   const isC = f.weight < 0;
-  const kind = isC ? "counter" : (f.track || "none");
-  const bars = Math.min(5, Math.max(1, Math.ceil(Math.abs(f.weight) / 10)));
-  const quotes = (f.quotes || []).slice(0, 2).map((q) => {
-    const s = srcInfo(q);
-    return `<div class="q"><span class="qt">«${esc(q.text)}»</span><span class="src-tag">${icon(s.i)}${esc(s.t)}</span></div>`;
-  }).join("");
-  return `<div class="feat ${isC ? "counter" : ""} ${f.llm ? "llm" : ""}">
-    <div class="ft"><span class="code ${kind}">${esc(f.code.replace("X_", ""))}</span><b>${esc(f.title)}</b>
-      ${f.llm ? `<span class="llmtag">${icon("sparkle")}LLM</span>` : ""}
-      <span class="wbar ${kind}" title="Вес ${f.weight > 0 ? "+" : ""}${f.weight}">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= bars ? "on" : ""}"></i>`).join("")}</span></div>
-    ${quotes ? `<div class="quotes">${quotes}</div>` : ""}
-    ${f.detail ? `<div class="det">${esc(f.detail)}</div>` : ""}
-    <div class="norm">${icon(String(f.norm).startsWith("Не норма") ? "info" : "law")}<span>${esc(f.norm)}</span></div>
+  const quotes = (f.quotes || []).slice(0, 2).map((q) => `<li><q>${esc(q.text)}</q><span class="src-tag">${esc(srcInfo(q).t)}</span></li>`).join("");
+  const own = String(f.norm).startsWith("Не норма");
+  return `<div class="feat ${isC ? "counter" : f.track || ""} ${f.llm ? "llm" : ""}">
+    <div class="ft"><b>${esc(f.title)}</b>${f.llm ? `<span class="llmtag" title="Признак нашла LLM, цитата сверена с текстом">LLM</span>` : ""}
+      <span class="w" title="Сколько признак добавляет к баллу">${f.weight > 0 ? "+" : "−"}${Math.abs(f.weight)}</span><span class="code">${esc(f.code.replace("X_", ""))}</span></div>
+    ${quotes ? `<ul class="quotes">${quotes}</ul>` : ""}
+    ${f.detail ? `<p class="det">${esc(f.detail)}</p>` : ""}
+    <p class="norm">${own ? esc(f.norm) : "Основание: " + esc(f.norm)}</p>
   </div>`;
 }
 
@@ -827,77 +808,64 @@ function renderCase(v, el) {
     c.label.startsWith("Сбор") && l5 ? l5.detail.split(" = ")[0] : "";
   const imgSrc = v.image_url ? esc(v.image_url) : withSid("api/image/" + encodeURIComponent(v.id));
 
+  const lgd = [main ? `<span><i class="mk ${main}"></i>признак</span>` : "", v.counters.length ? `<span><i class="mk counter"></i>снижает риск</span>` : "",
+    geoWhy.some((q) => q.seg != null) ? `<span><i class="mk geo"></i>город</span>` : ""].join("");
   el.innerHTML = `
     <div class="cin">
       <div class="chead">
-        ${platIcon(v.platform)}
-        <div class="who"><b>${esc(v.account)}</b>${v.account_name ? `<span class="muted"> · ${esc(v.account_name)}</span>` : ""}
+        <div class="who"><b>${esc(v.account)}</b>${v.account_name ? `<span class="muted">${esc(v.account_name)}</span>` : ""}
           ${v.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}
-          <div class="sub2">${[v.platform === "manual" ? "" : PLAT_NAME[v.platform] || v.platform, fmtTime(v.ts), v.followers ? fmtNum(v.followers) + " подписчиков" : "",
+          <div class="sub2">${[v.platform === "manual" ? "Свой текст" : PLAT_NAME[v.platform] || v.platform, fmtTime(v.ts), v.followers ? fmtNum(v.followers) + " подписчиков" : "",
             v.group ? "группа «" + esc(v.group) + "»" : "", "язык: " + (LANG[v.lang] || v.lang)].filter(Boolean).join(" · ")}</div></div>
-        ${v.url ? `<a class="src" href="${esc(v.url)}" target="_blank" rel="noopener">${icon("external")}<span>Источник</span></a>` : ""}
+        ${v.url ? `<a class="src" href="${esc(v.url)}" target="_blank" rel="noopener">Источник ↗</a>` : ""}
       </div>
-      ${v.demo ? `<div class="demostrip">Синтетический пример: аккаунт и текст придуманы командой для показа.</div>` : ""}
+      ${v.demo ? `<p class="demostrip">Синтетический пример: аккаунт и текст придуманы командой для показа.</p>` : ""}
       <div class="verdict ${v.level}">
+        <div class="vscore"><b>${v.score}</b><span>из 100</span></div>
         <div class="vtxt">
-          <div class="vlevel">${LEVEL[v.level]} ${v.track ? trkTag(v.track) : ""}</div>
-          <div class="vwhy">${esc(whyLine(v, main))}</div>
+          <div class="vlevel">${LEVEL[v.level]}${v.track ? ` · ${esc(TRACK[v.track])}` : ""}</div>
+          <p class="vwhy">${esc(whyLine(v, main))}</p>
+          ${v.track && v.composition && v.composition.length ? `<ul class="comp" title="Ключевые признаки направления">${v.composition.map((c) =>
+            `<li class="${c.found ? "yes" : "no"}">${c.found ? "✓" : "○"} ${esc(c.label)}</li>`).join("")}</ul>` : ""}
         </div>
-        ${ring(v.score, v.level, 64)}
       </div>
-      <div class="tracks3">${Object.entries(v.tracks).map(([t, x]) => `
-        <div class="tb ${t}"><div class="tl"><b>${TRACK_SHORT[t]}</b><span>${x.score} · ${LEVEL_SHORT[x.level]}</span></div>
-        <div class="bar"><i style="width:${x.score}%"></i></div></div>`).join("")}
-      </div>
-      <div class="geoline ${g.city === state.city.id ? "here" : ""}">${icon("pin")}<b>${esc(g.label || "город не указан")}</b>
-        ${geoWhy.map((q) => `<span class="gq" title="${esc(q.why)}">${q.src === "network" ? esc(q.text) : "«" + esc(q.text) + "»"}<i>${esc(GEO_SRC[q.src] || q.src)}</i></span>`).join("")}
-        ${!geoWhy.length && !g.city ? `<span class="muted">нет названия города, района, телефона 7252 или городского аккаунта</span>` : ""}</div>
+      <dl class="facts">
+        <dt>Баллы по направлениям</dt><dd>${Object.entries(v.tracks).map(([t, x]) => `<span class="${x.score ? t : "zero"}">${TRACK_SHORT[t]} ${x.score}</span>`).join(" · ")}</dd>
+        <dt>Город</dt><dd><b>${esc(g.label || "город не указан")}</b>${geoWhy.length ? ": " + geoWhy.map((q) => `${q.src === "network" ? esc(q.text) : "«" + esc(q.text) + "»"} <span class="muted">(${esc(GEO_SRC[q.src] || q.src)})</span>`).join(", ") : !g.city ? ` <span class="muted">нет названия города, района, телефона 7252 или городского аккаунта</span>` : ""}</dd>
+      </dl>
       ${v.computed.length ? `<div class="calcs">${v.computed.map((c) => `
-        <div class="calc"><div class="k">${esc(c.label)}</div><div class="v">${esc(c.value)}</div>${calcExtra(c) ? `<div class="x">${esc(calcExtra(c))}</div>` : ""}</div>`).join("")}</div>` : ""}
+        <div class="calc"><span class="k">${esc(c.label)}</span><b class="v">${esc(c.value)}</b>${calcExtra(c) ? `<span class="x">${esc(calcExtra(c))}</span>` : ""}</div>`).join("")}</div>` : ""}
     </div>
 
-    ${v.track && v.composition && v.composition.length ? `<div class="sec">
-      <div class="sec-t">${icon("checkc")}Состав: ${esc(TRACK[main] || "")}</div>
-      <div class="checklist">${v.composition.map((c) => `<div class="ck ${c.found ? "yes" : "no"}">${icon(c.found ? "checkc" : "circle")}${esc(c.label)}</div>`).join("")}</div>
-    </div>` : ""}
+    ${mainFeats.length ? `<section class="sec"><h3>${v.track ? "Признаки и основания" : "Что нашлось"}</h3>${mainFeats.map(featHtml).join("")}</section>` : ""}
 
-    <div class="sec">
-      <div class="sec-t">${icon("eye")}Публикация
-        <span class="lgd">${main ? `<span><i style="background:var(--${main}-mark);box-shadow:inset 0 -2px 0 var(--${main})"></i>признак</span>` : ""}
-        ${v.counters.length ? `<span><i style="background:var(--ok-mark);box-shadow:inset 0 -2px 0 var(--ok)"></i>снижает риск</span>` : ""}
-        ${geoWhy.some((q) => q.seg != null) ? `<span><i style="background:var(--geo-mark);box-shadow:inset 0 -2px 0 var(--geo)"></i>город</span>` : ""}</span></div>
+    <section class="sec">
+      <h3>Публикация ${lgd ? `<span class="lgd">${lgd}</span>` : ""}</h3>
       ${textSeg && textSeg.text ? `<div class="post">${highlight(textSeg.text, hl(textSeg.i), titles)}</div>` : ""}
-      ${bioSeg ? `<div class="label">${icon("user")}Описание профиля</div><div class="post">${highlight(bioSeg.text, hl(bioSeg.i), titles)}</div>` : ""}
-      ${ocrSeg ? `<div class="label">${icon("image")}Скриншот и распознанный текст</div>
+      ${bioSeg ? `<p class="label">Описание профиля</p><div class="post">${highlight(bioSeg.text, hl(bioSeg.i), titles)}</div>` : ""}
+      ${ocrSeg ? `<p class="label">Скриншот и распознанный текст</p>
         <div class="shot"><img src="${imgSrc}" alt="скриншот" data-zoom>
-        <div class="post">${highlight(ocrSeg.text, hl(ocrSeg.i), titles)}</div></div>` : v.image_url ? `<div class="label">${icon("image")}Картинка из поста</div>
+        <div class="post">${highlight(ocrSeg.text, hl(ocrSeg.i), titles)}</div></div>` : v.image_url ? `<p class="label">Картинка из поста</p>
         <div class="shot"><img src="${imgSrc}" alt="картинка из поста" data-zoom>
         <div class="post muted">${v.ocr_pending ? "Текст на картинке ещё распознаётся, разбор обновится сам." : "Текста на картинке не нашлось."}</div></div>` : ""}
-      ${asr.length ? `<div class="label">${icon("mic")}Транскрипция эфира</div><div class="post" style="white-space:normal;padding:4px 14px">${asr.map((s) => `
-        <div class="tr"><div class="t">${srcInfo(s).t.replace("эфир ", "")}</div><div>${highlight(s.text, hl(s.i), titles)}</div></div>`).join("")}</div>` : ""}
-    </div>
+      ${asr.length ? `<p class="label">Расшифровка эфира</p><div class="post asr">${asr.map((s) => `
+        <div class="tr"><span class="t">${srcInfo(s).t.replace("эфир ", "")}</span><div>${highlight(s.text, hl(s.i), titles)}</div></div>`).join("")}</div>` : ""}
+    </section>
 
-    ${mainFeats.length ? `<div class="sec">
-      <div class="sec-t">${icon("law")}${v.track ? "Признаки и основания" : "Что нашлось"}</div>
-      ${mainFeats.map(featHtml).join("")}
-    </div>` : ""}
-    ${v.counters.length ? `<div class="sec"><div class="sec-t">${icon("down")}Снижает риск</div>${v.counters.map(featHtml).join("")}</div>` : ""}
-    ${v.network.length ? `<div class="sec"><div class="sec-t">${icon("network")}Связи с другими аккаунтами</div>${v.network.map((n) => `
-      <div class="net">${icon(ENT_ICON[n.type] || "link")}<div><b>${esc(n.entity)}</b> также у
-        ${n.posts.map((p) => { const c = state.cases.find((x) => x.id === p); return `<a href="#" data-open="${esc(p)}">${esc(c ? c.account : p)}</a>`; }).join(", ")}</div></div>`).join("")}</div>` : ""}
-    ${otherFeats.length ? `<div class="sec"><div class="sec-t">${icon("layers")}Признаки других направлений</div>${otherFeats.map(featHtml).join("")}</div>` : ""}
-    ${v.entities.length ? `<div class="sec"><div class="sec-t">${icon("search")}Извлечено из публикации</div>
-      <div class="ents">${v.entities.map((e) => `<span class="ent ${e.signals && e.signals.length ? "sig" : ""}" title="${esc((e.signals || []).join("; "))}">${icon(ENT_ICON[e.type] || "link")}${esc(e.label)}</span>`).join("")}</div>
-      <div class="note">Номера карт и телефонов показаны маской, в системе хранится только хеш.${v.llm ? ` LLM (${esc(v.llm.model || state.llmModel)}) разобрала спорный случай за ${fmtSec(v.llm.seconds)} с: добавлено ${v.llm.added.length}, отброшено без цитаты ${v.llm.rejected}.` : ""}</div></div>` :
-      (v.llm ? `<div class="sec"><div class="note">LLM (${esc(v.llm.model || state.llmModel)}) разобрала спорный случай за ${fmtSec(v.llm.seconds)} с: добавлено ${v.llm.added.length}, отброшено без цитаты ${v.llm.rejected}.</div></div>` : "")}
+    ${v.counters.length ? `<section class="sec"><h3>Снижает риск</h3>${v.counters.map(featHtml).join("")}</section>` : ""}
+    ${v.network.length ? `<section class="sec"><h3>Связи с другими аккаунтами</h3><ul class="nets">${v.network.map((n) => `
+      <li><b>${esc(n.entity)}</b> также у ${n.posts.map((p) => { const c = state.cases.find((x) => x.id === p); return `<a href="#" data-open="${esc(p)}">${esc(c ? c.account : p)}</a>`; }).join(", ")}</li>`).join("")}</ul></section>` : ""}
+    ${otherFeats.length ? `<section class="sec"><h3>Признаки других направлений</h3>${otherFeats.map(featHtml).join("")}</section>` : ""}
+    ${v.entities.length || v.llm ? `<section class="sec"><h3>Извлечено из публикации</h3>
+      ${v.entities.length ? `<p class="ents">${v.entities.map((e) => `<span class="ent ${e.signals && e.signals.length ? "sig" : ""}" title="${esc((e.signals || []).join("; "))}">${esc(e.label)}</span>`).join("")}</p>` : ""}
+      <p class="note">Номера карт и телефонов показаны маской, в системе хранится только хеш.${v.llm ? ` LLM (${esc(v.llm.model || state.llmModel)}) разобрала спорный случай за ${fmtSec(v.llm.seconds)} с: добавлено ${v.llm.added.length}, отброшено без цитаты ${v.llm.rejected}.` : ""}</p></section>` : ""}
 
-    <div class="disc">${icon("info")}<span>Система показывает признаки возможного нарушения, а не вывод о нём.</span></div>
     <div class="cact">
-      <span class="dec">Решение за специалистом</span>
-      ${v.track ? `<button class="btn red" data-fb="confirmed">${icon("check")}Подтвердить</button>
-      <button class="btn green" data-fb="false_positive">${icon("x")}Ложное</button>
-      <button class="btn blue" data-fb="sent">${icon("send")}Передать</button>` : ""}
-      <a class="btn push" data-report="${esc(v.id)}" href="${withSid("api/report/" + encodeURIComponent(v.id))}" target="_blank" rel="noopener">${icon("file")}Справка</a>
+      <p class="dec"><b>Решение принимает специалист.</b> Система показывает признаки возможного нарушения, а не вывод о нём.</p>
+      ${v.track ? `<button class="btn danger" data-fb="confirmed">Подтвердить признаки</button>
+      <button class="btn" data-fb="false_positive">Отклонить</button>
+      <button class="btn" data-fb="sent">Отметить к передаче</button>` : ""}
+      <a class="btn push" data-report="${esc(v.id)}" href="${withSid("api/report/" + encodeURIComponent(v.id))}" target="_blank" rel="noopener">Справка</a>
       ${v.feedback ? `<span class="fb ${v.feedback.verdict}">${FB[v.feedback.verdict]} в ${esc(v.feedback.at)}</span>` : ""}
     </div>`;
 
@@ -972,25 +940,25 @@ async function loadGraph() {
   $("#graphDemo").innerHTML = `<b>Демо-лента · синтетика:</b> аккаунты и реквизиты придуманы командой для показа.` +
     (n.nets ? ` ${n.nets} ${plural(n.nets, "сеть", "сети", "сетей")}, ${n.accounts} ${plural(n.accounts, "аккаунт", "аккаунта", "аккаунтов")}.` : "");
   if (empty) return;
-  const COLORS = { high: "#dc2626", medium: "#d97706", low: "#94a3b8" };
+  const COLORS = { high: "#b42318", medium: "#9a5700", low: "#9aa39b" };
   if (cy) cy.destroy();
   cy = cytoscape({
     container: $("#cy"),
     elements: [...g.nodes, ...g.edges],
     style: [
       { selector: "node[kind = 'account']", style: {
-        "background-color": "#fff", "border-width": 4, "border-color": (x) => COLORS[x.data("level")] || "#94a3b8",
+        "background-color": "#fff", "border-width": 4, "border-color": (x) => COLORS[x.data("level")] || "#9aa39b",
         label: "data(label)", width: 30, height: 30, "font-size": 14, "font-weight": 600, "font-family": "Inter, sans-serif",
-        "text-valign": "bottom", "text-margin-y": 6, color: "#0f172a", "text-wrap": "wrap", "text-max-width": 170,
+        "text-valign": "bottom", "text-margin-y": 6, color: "#202620", "text-wrap": "wrap", "text-max-width": 170,
         "text-background-color": "#ffffff", "text-background-opacity": 0.9, "text-background-padding": 2, "text-background-shape": "roundrectangle" } },
       { selector: "node[kind = 'account'][?demo]", style: { "border-style": "dashed" } },
       { selector: "node[kind != 'account']", style: {
-        shape: "round-diamond", "background-color": "#334155", width: 18, height: 18, label: "data(label)",
-        "font-size": 13, "font-family": "Inter, sans-serif", color: "#334155", "text-valign": "top", "text-margin-y": -5,
-        "text-wrap": "wrap", "text-max-width": 190, "text-background-color": "#eef2f7", "text-background-opacity": 1,
+        shape: "round-diamond", "background-color": "#202620", width: 18, height: 18, label: "data(label)",
+        "font-size": 13, "font-family": "Inter, sans-serif", color: "#4f5850", "text-valign": "top", "text-margin-y": -5,
+        "text-wrap": "wrap", "text-max-width": 190, "text-background-color": "#f4f5f2", "text-background-opacity": 1,
         "text-background-padding": 2, "text-background-shape": "roundrectangle" } },
-      { selector: "edge", style: { width: 2, "line-color": "#cbd5e1", "curve-style": "bezier" } },
-      { selector: "node:selected", style: { "border-color": "#1d4ed8", "border-width": 5 } },
+      { selector: "edge", style: { width: 2, "line-color": "#c6ccc4", "curve-style": "bezier" } },
+      { selector: "node:selected", style: { "border-color": "#245c45", "border-width": 5 } },
       { selector: ".faded", style: { opacity: 0.25 } },
     ],
     // плотная раскладка: после «вписать» подписи остаются читаемыми и на проекторе
@@ -1008,7 +976,7 @@ const GSIDE = `<div class="muted">Нажмите на аккаунт или ре
 function glist(g) {
   return `<div class="glist">${g.nodes.filter((x) => x.data.kind !== "account").map((x) => {
     const deg = g.edges.filter((e) => e.data.target === x.data.id).length;
-    return `<div>${icon(ENT_ICON[x.data.kind] || "link")}<span>${esc(x.data.label)}</span><span class="muted" style="margin-left:auto">${deg} ${plural(deg, "аккаунт", "аккаунта", "аккаунтов")}</span></div>`;
+    return `<div><span>${esc(x.data.label)}</span><span class="muted">${deg} ${plural(deg, "аккаунт", "аккаунта", "аккаунтов")}</span></div>`;
   }).join("")}</div>`;
 }
 function selectNode(node) {
@@ -1019,10 +987,10 @@ function selectNode(node) {
   if (d.kind === "account") {
     const mine = state.cases.filter((c) => c.account === d.label);
     const ents = node.neighborhood("node").map((x) => x.data());
-    $("#gside").innerHTML = `<span class="badge ${d.level}">${LEVEL_SHORT[d.level]}</span>${d.demo ? ` <span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}<h3>${esc(d.label)}</h3>
+    $("#gside").innerHTML = `<p class="lvl ${d.level}">${LEVEL[d.level]}${d.demo ? ` <span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}</p><h3>${esc(d.label)}</h3>
       <div class="muted">${mine.length} ${plural(mine.length, "публикация", "публикации", "публикаций")} в очереди</div>
-      <div class="glist">${ents.map((e) => `<div>${icon(ENT_ICON[e.kind] || "link")}<span>${esc(e.label)}</span></div>`).join("")}</div>
-      ${mine.map((c) => `<button class="btn" style="width:100%;margin-top:6px" data-case="${esc(c.id)}">${icon("eye")}Открыть: ${esc(c.snippet.slice(0, 40))}…</button>`).join("")}`;
+      <div class="glist">${ents.map((e) => `<div><span>${esc(e.label)}</span></div>`).join("")}</div>
+      ${mine.map((c) => `<button class="btn wide" data-case="${esc(c.id)}">Открыть: ${esc(c.snippet.slice(0, 40))}…</button>`).join("")}`;
   } else {
     const accs = node.neighborhood("node").map((x) => x.data());
     $("#gside").innerHTML = `<div class="muted">Общий реквизит</div><h3>${esc(d.label)}</h3>
@@ -1091,33 +1059,33 @@ async function runCheck() {
 
 /* ---------- точность ---------- */
 async function loadMetrics() {
-  $("#metrics").innerHTML = `<div class="loading muted"><span class="spin"></span>Считаю на размеченной демо-ленте…</div>`;
+  $("#metrics").innerHTML = `<p class="loading muted"><span class="spin"></span>Считаю на размеченной демо-ленте…</p>`;
   const m = await api("api/metrics");
-  const pct = (x) => (x == null ? "—" : Math.round(x * 100) + "%");
+  const pct = (x) => (x == null ? "нет" : Math.round(x * 100) + "%");
   const all = m.medium.rows.find((r) => r.track === "all");
   const name = { lottery: "Розыгрыши", casino: "Казино", pyramid: "Пирамиды", all: "Все направления" };
-  const rows = (mm) => mm.rows.map((r) => `<tr><td>${r.track === "all" ? "<b>" + name[r.track] + "</b>" : name[r.track]}</td>
+  const rows = (mm) => mm.rows.map((r) => `<tr class="${r.track === "all" ? "total" : ""}"><td>${name[r.track]}</td>
     <td class="num">${pct(r.precision)}</td><td class="num">${pct(r.recall)}</td><td class="num">${pct(r.fpr)}</td>
     <td class="num">${r.tp}</td><td class="num">${r.fp}</td><td class="num">${r.fn}</td><td class="num">${r.tn}</td></tr>`).join("");
-  const head = `<tr><th>Направление</th><th>Точность</th><th>Полнота</th><th>Ложные</th><th>TP</th><th>FP</th><th>FN</th><th>TN</th></tr>`;
+  const head = `<tr><th>Направление</th><th class="num">Точность</th><th class="num">Полнота</th><th class="num">Ложные</th><th class="num">Верно найдено</th><th class="num">Ложно найдено</th><th class="num">Пропущено</th><th class="num">Верно пропущено</th></tr>`;
+  const same = rows(m.medium) === rows(m.high);
   $("#metrics").innerHTML = `
-    <h2>Точность на размеченной демо-ленте</h2>
-    <p class="muted">${m.medium.total} ${plural(m.medium.total, "публикация", "публикации", "публикаций")}, из них ${m.medium.negatives} трудных негативов: бесплатные конкурсы, банк, официальная лотерея, легальный букмекер, новости и предупреждения.</p>
-    <div class="mtiles">
-      <div class="mtile"><div class="k">Точность (precision)</div><div class="v">${pct(all.precision)}</div><div class="d">какая доля помеченных публикаций действительно со схемой</div></div>
-      <div class="mtile"><div class="k">Полнота (recall)</div><div class="v">${pct(all.recall)}</div><div class="d">какую долю схем система нашла</div></div>
-      <div class="mtile"><div class="k">Ложные срабатывания</div><div class="v">${pct(all.fpr)}</div><div class="d">доля обычных публикаций, помеченных по ошибке (${m.medium.false_alarms.length} из ${m.medium.negatives})</div></div>
-    </div>
-    ${rows(m.medium) === rows(m.high)
-      ? `<div class="tablewrap"><table class="m"><caption class="muted" style="text-align:left">Порог «средний и выше» (при пороге «высокий» то же самое)</caption>${head}${rows(m.medium)}</table></div>`
-      : `<div class="tablewrap"><table class="m"><caption class="muted" style="text-align:left">Порог «средний и выше»</caption>${head}${rows(m.medium)}</table></div>
-    <div class="tablewrap"><table class="m"><caption class="muted" style="text-align:left">Порог «высокий»</caption>${head}${rows(m.high)}</table></div>`}
-    <div class="honest">${icon("info")}<span>${esc(m.note)}</span></div>
-    <div class="how">
-      <div><b>Данные</b>Синтетические публикации на русском, казахском и транслите по мотивам реальных казахстанских дел, со скриншотами и транскрипциями эфиров.</div>
-      <div><b>Как считаем</b>Публикация считается найденной, если уровень не ниже порога и направление совпало с разметкой.</div>
-      <div><b>Что дальше</b>Отдельный тест из реальных публикаций, собранный другими людьми, и замер на нём отдельно по языкам.</div>
-    </div>`;
+    <h2>Качество на размеченной демо-ленте</h2>
+    <p class="demostrip">Демо-лента синтетическая и написана вместе со словарями, поэтому эти цифры показывают, что всё работает, а не точность на настоящих данных. ${esc(m.note.split(". ").slice(1).join(". "))}</p>
+    <div class="tablewrap"><table class="tbl">
+      <tr><th>Показатель</th><th class="num">Значение</th><th>Что значит</th></tr>
+      <tr><td>Точность</td><td class="num bignum">${pct(all.precision)}</td><td>доля помеченных публикаций, где схема действительно есть</td></tr>
+      <tr><td>Полнота</td><td class="num bignum">${pct(all.recall)}</td><td>доля схем, которые система нашла (${all.tp} из ${all.tp + all.fn})</td></tr>
+      <tr><td>Ложные срабатывания</td><td class="num bignum">${pct(all.fpr)}</td><td>обычные публикации, помеченные по ошибке: ${m.medium.false_alarms.length} из ${m.medium.negatives} трудных (бесплатные конкурсы, банк, официальная лотерея, легальный букмекер, новости и предупреждения)</td></tr>
+    </table></div>
+    <h3>По направлениям, порог «средний и выше»${same ? ", при пороге «высокий» то же самое" : ""}</h3>
+    <div class="tablewrap"><table class="tbl">${head}${rows(m.medium)}</table></div>
+    ${same ? "" : `<h3>Порог «высокий»</h3><div class="tablewrap"><table class="tbl">${head}${rows(m.high)}</table></div>`}
+    <dl class="defs wide">
+      <dt>Данные</dt><dd>${m.medium.total} ${plural(m.medium.total, "синтетическая публикация", "синтетические публикации", "синтетических публикаций")} на русском, казахском и транслите по мотивам реальных казахстанских дел, со скриншотами и расшифровками эфиров.</dd>
+      <dt>Как считаем</dt><dd>Публикация считается найденной, если уровень не ниже порога и направление совпало с разметкой.</dd>
+      <dt>Что дальше</dt><dd>Отдельный тест из настоящих публикаций, собранный другими людьми, и замер на нём отдельно по языкам.</dd>
+    </dl>`;
 }
 
 /* ---------- старт ---------- */
