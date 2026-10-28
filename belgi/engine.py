@@ -233,14 +233,29 @@ def _track_scores(found, cnt, ctx):
     return tracks
 
 
+def actionable(r):
+    """Есть ли куда платить или писать: карта, телефон, счёт, промокод, чужой контакт, подозрительная ссылка.
+    Без этого LLM не зовём и уровень по её признакам не поднимаем: речь или новость про «структуры»
+    и «доходы» схемой не становится."""
+    own = (r.get("account") or "").lower()
+    for e in r["entities"]:
+        if e["type"] in ("card", "phone", "iban", "promo") or (e["type"] == "link" and e.get("signals")):
+            return True
+        if e["type"] == "mention" and (e.get("label") or "").lower() != own:
+            return True
+    return False
+
+
 def score_tracks(r):
     found, cnt, ctx = r["found"], r["counters"], r["ctx"]
     tracks = _track_scores(found, cnt, ctx)
     if any(f.get("llm") for f in found.values()):
-        # LLM поднимает уровень не больше чем на ступень от уровня правил, и при любом пересчёте (связи, автопроверка)
+        # LLM поднимает уровень не больше чем на ступень от уровня правил, и при любом пересчёте (связи, автопроверка);
+        # без реквизитов или контакта не поднимает совсем
         base = _track_scores({c: f for c, f in found.items() if not f.get("llm")}, cnt, ctx)
+        step = 1 if actionable(r) else 0
         for t, v in tracks.items():
-            v["level"] = LEVELS[min(LEVELS.index(v["level"]), LEVELS.index(base[t]["level"]) + 1)]
+            v["level"] = LEVELS[min(LEVELS.index(v["level"]), LEVELS.index(base[t]["level"]) + step)]
     r["tracks"] = tracks
     primary = max(tracks, key=lambda t: (LEVELS.index(tracks[t]["level"]), tracks[t]["score"]))
     r["track"] = primary if tracks[primary]["score"] > 0 else None

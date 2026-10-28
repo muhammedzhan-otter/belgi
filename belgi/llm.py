@@ -46,11 +46,11 @@ def _grey_tracks(r):
     if r["level"] == "high" or "X_NEWS" in r["counters"]:
         return []
     strong_counter = {c["track"] for c in r["counters"].values() if c["weight"] <= -40}
-    # без единого признака или реквизита (обычные новости с «%» и «доход») LLM не зовём
-    risky_ents = any(e["type"] in ("card", "phone", "iban", "promo") or e.get("signals") for e in r["entities"])
+    # без реквизитов или контакта (новости, речи, посты со ссылкой на свой же канал) LLM не зовём
+    if not engine.actionable(r):
+        return []
     return [t for t, v in r["tracks"].items()
-            if r["ctx"][t] and GREY[0] <= v["score"] < GREY[1] and t not in strong_counter
-            and (v["score"] > 0 or risky_ents)]
+            if r["ctx"][t] and GREY[0] <= v["score"] < GREY[1] and t not in strong_counter]
 
 
 def build_request(r):

@@ -154,7 +154,7 @@ def report_html(r):
     e = html.escape
     feats = "".join(
         f"<tr><td><b>{e(f['title'])}</b>{'<br><span class=d>' + e(f['detail']) + '</span>' if f.get('detail') else ''}</td>"
-        f"<td>{'<br>'.join('«' + e(q['text']) + '»' + (' <span class=d>(' + _src(q) + ')</span>') for q in f['quotes'][:2]) or '—'}</td>"
+        f"<td>{'<br>'.join('«' + e(q['text']) + '»' + (' <span class=d>(' + _src(q) + ')</span>') for q in f['quotes'][:2]) or 'нет'}</td>"
         f"<td class=d>{e(f['norm'])}</td></tr>" for f in v["features"] if f["track"] == v["track"] or f["code"] == "N1")
     cnt = "".join(f"<li>{e(c['title'])}</li>" for c in v["counters"]) or "<li>нет</li>"
     missing = "".join(f"<li>{e(m)}</li>" for m in (v["tracks"].get(v["track"] or "", {}) or {}).get("missing", [])) or "<li>все основные признаки найдены</li>"

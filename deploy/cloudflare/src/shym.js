@@ -12,6 +12,7 @@ const MAX_CHANNELS = 14;
 const PER_RUN = 2;
 const PER_CHANNEL = 40;
 const MANUAL_GAP = 30 * 60 * 1000;
+const LOCAL_SHARE = 0.5;   // найденный по ссылке канал оставляем, если про город хотя бы половина постов
 
 const REF = /(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(?!\+|joinchat|s\/|share|addstickers|proxy|iv\b|c\/)([A-Za-z0-9_]{5,32})/gi;
 const MENTION = /(?<![\w.])@([A-Za-z][A-Za-z0-9_]{4,31})\b/g;
@@ -61,6 +62,13 @@ export async function collect(env, manual = false) {
   const meta = (await env.SHYM.get("meta", "json")) || { runs: 0, since: null, last_run: null, channels: {} };
   if (manual && meta.last_run && Date.now() - Date.parse(meta.last_run) < MANUAL_GAP) return { skipped: true, meta };
   for (const s of SEEDS) meta.channels[s] ??= { from: null, last: null, title: null, n: 0, added: 0, error: null, fails: 0 };
+  // отброшенные каналы помним, иначе ссылки из постов добавляют их снова и снова
+  meta.skip ??= {};
+  const drop = async (name, why) => {
+    delete meta.channels[name];
+    meta.skip[name] = why;
+    await env.SHYM.delete("ch:" + name);
+  };
   const pick = Object.keys(meta.channels)
     .sort((a, b) => (Date.parse(meta.channels[a].last) || 0) - (Date.parse(meta.channels[b].last) || 0))
     .slice(0, meta.runs ? PER_RUN : SEEDS.length);   // в первый раз сразу все стартовые каналы
@@ -72,16 +80,22 @@ export async function collect(env, manual = false) {
     try { page = await readChannel(name); } catch (e) {
       ch.error = String(e.message || e);
       ch.fails = (ch.fails || 0) + 1;
+      if (!SEEDS.includes(name) && (ch.fails >= 2 || ch.error === "нет открытой ленты")) await drop(name, ch.error);
       return;
     }
     ch.error = null; ch.fails = 0; ch.title = page.title || name;
+    const local = page.posts.filter((p) => CITY.test(p.text)).length;
+    if (!SEEDS.includes(name) && page.posts.length && local / page.posts.length < LOCAL_SHARE) {
+      await drop(name, "не городской");
+      return;
+    }
     const old = (await env.SHYM.get("ch:" + name, "json")) || [];
     const seen = new Set(old.map((p) => p.id));
     const fresh = page.posts.filter((p) => !seen.has(p.id));
     for (const p of page.posts) {
       if (!CITY.test(p.text) && !SEEDS.includes(name)) continue;
       for (const ref of refs(p.text)) {
-        if (ref !== name && !meta.channels[ref] && Object.keys(meta.channels).length < MAX_CHANNELS) {
+        if (ref !== name && !meta.channels[ref] && !meta.skip[ref] && Object.keys(meta.channels).length < MAX_CHANNELS) {
           meta.channels[ref] = { from: name, last: null, title: null, n: 0, added: 0, error: null, fails: 0 };
         }
       }
@@ -92,10 +106,8 @@ export async function collect(env, manual = false) {
     ch.added = (ch.added || 0) + fresh.length;
     await env.SHYM.put("ch:" + name, JSON.stringify(all));
   }));
-  // найденные по ссылкам каналы без открытой ленты не держим
-  for (const [n, c] of Object.entries(meta.channels)) {
-    if (!SEEDS.includes(n) && c.fails >= 2) delete meta.channels[n];
-  }
+  const skipped = Object.keys(meta.skip);
+  if (skipped.length > 100) for (const n of skipped.slice(0, skipped.length - 100)) delete meta.skip[n];
   meta.runs += 1;
   meta.last_run = now;
   meta.since ??= now;
