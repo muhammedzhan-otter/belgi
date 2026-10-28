@@ -676,12 +676,14 @@ function renderQueue(newIds = []) {
       <div class="iscore">${c.score}</div>
       <div class="ibody">
         <div class="ihead"><b class="lvl">${LEVEL[c.level]}${c.level !== "low" && c.track ? ` · ${TRACK_SHORT[c.track]}` : ""}</b><span class="time">${fmtTime(c.ts)}</span></div>
-        <div class="imeta"><span class="acc">${esc(c.account)}</span>${c.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}<span>${tags.map(esc).join(" · ")}</span></div>
+        <div class="imeta"><span class="acc">${esc(c.account)}</span>${c.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}<span>${tags.map(esc).join(" · ")}</span>
+          ${c.url ? `<a class="srclink" href="${esc(c.url)}" target="_blank" rel="noopener" title="Открыть публикацию в источнике">источник ↗</a>` : ""}</div>
         <div class="snip">${esc(c.snippet) || `<span class="muted">Пост из одной картинки</span>`}</div>
         ${c.level !== "low" ? `<div class="isigns">${c.chips.map(esc).join(" · ")}</div>` : c.ocr_pending ? `<div class="isigns muted">Картинка ещё не прочитана</div>` : ""}
         ${c.feedback ? `<div class="fb ${c.feedback.verdict}">${FB[c.feedback.verdict]}</div>` : ""}
       </div>
     </div>`; }).join("")}</div>`);
+  $$("#queue .srclink").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
   $$("#queue .item").forEach((el) => {
     el.addEventListener("click", () => openCase(el.dataset.id));
     el.addEventListener("keydown", (e) => { if (e.key === "Enter") openCase(el.dataset.id); });
@@ -731,7 +733,7 @@ function showGuide() {
 
 // позиции приходят из Python в символах (code points), а в JS эмодзи занимает две позиции:
 // режем по массиву символов, иначе подсветка после эмодзи сдвигается
-function highlight(text, spans, titles) {
+function highlight(text, spans, titles, seg = null) {
   if (!spans || !spans.length) return esc(text);
   const ch = Array.from(text);
   const cut = (a, b) => ch.slice(a, b).join("");
@@ -741,7 +743,7 @@ function highlight(text, spans, titles) {
     if (s.start < pos || s.end <= s.start) continue;
     out += esc(cut(pos, s.start));
     const cls = s.kind === "counter" ? "counter" : s.kind === "geo" ? "geo" : s.track || "lottery";
-    out += `<mark class="${cls}" title="${esc(titles[s.code] || s.code)}">${esc(cut(s.start, s.end))}</mark>`;
+    out += `<mark class="${cls}" title="${esc(titles[s.code] || s.code)}"${seg != null ? ` data-k="${seg}:${s.start}"` : ""}>${esc(cut(s.start, s.end))}</mark>`;
     pos = s.end;
   }
   return out + esc(cut(pos, ch.length));
@@ -749,7 +751,10 @@ function highlight(text, spans, titles) {
 
 function featHtml(f) {
   const isC = f.weight < 0;
-  const quotes = (f.quotes || []).slice(0, 2).map((q) => `<li><q>${esc(q.text)}</q><span class="src-tag">${esc(srcInfo(q).t)}</span></li>`).join("");
+  const where = { text: "в тексте", ocr: "на скриншоте", bio: "в профиле" };
+  const quotes = (f.quotes || []).slice(0, 2).map((q) => q.seg != null
+    ? `<li><button class="jump" data-jump="${q.seg}:${q.start}" title="Показать это место в публикации"><q>${esc(q.text)}</q><span class="src-tag">${esc(q.src === "asr" ? srcInfo(q).t : where[q.src] || srcInfo(q).t)} ↓</span></button></li>`
+    : `<li><q>${esc(q.text)}</q><span class="src-tag">${esc(srcInfo(q).t)}</span></li>`).join("");
   const own = String(f.norm).startsWith("Не норма");
   return `<div class="feat ${isC ? "counter" : f.track || ""} ${f.llm ? "llm" : ""}">
     <div class="ft"><b>${esc(f.title)}</b>${f.llm ? `<span class="llmtag" title="Признак нашла LLM, цитата сверена с текстом">LLM</span>` : ""}
@@ -767,6 +772,25 @@ function whyLine(v, main) {
   if (v.counters.length) return "Снижает риск: " + v.counters.map((c) => lc(c.title)).join(", ") + ".";
   if (main) return "Признаков недостаточно, чтобы поднять уровень.";
   return "Признаков схем не найдено.";
+}
+
+// куда ведёт «источник»: сам пост; у синтетики настоящего адреса нет, у жалоб есть скриншот
+function sourceLink(v) {
+  if (v.url) return `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url.replace(/^https?:\/\//, ""))} ↗</a>`;
+  if (v.platform === "manual") return `<span class="muted">свой текст, ссылки нет</span>`;
+  if (v.demo && v.image_url) return `<a href="${esc(v.image_url)}" target="_blank" rel="noopener">скриншот ${v.platform === "whatsapp" ? "жалобы" : "из публикации"} ↗</a> <span class="muted">(синтетика, адреса поста нет)</span>`;
+  if (v.demo) return `<span class="muted">синтетическая публикация, адреса нет</span>`;
+  return `<span class="muted">адрес не сохранён</span>`;
+}
+// нажатие на цитату признака: прокрутить к этому месту в публикации и подсветить
+function jumpTo(el, key) {
+  const [seg] = key.split(":");
+  const t = el.querySelector(`mark[data-k="${key}"]`) || el.querySelector(`[data-seg="${seg}"]`);
+  if (!t) return;
+  t.scrollIntoView({ behavior: "smooth", block: "center" });
+  t.classList.remove("ping");
+  void t.offsetWidth;
+  t.classList.add("ping");
 }
 
 // user: открыл человек (на телефоне карточка открывается листом), иначе только обновить на месте
@@ -817,7 +841,7 @@ function renderCase(v, el) {
           ${v.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}
           <div class="sub2">${[v.platform === "manual" ? "Свой текст" : PLAT_NAME[v.platform] || v.platform, fmtTime(v.ts), v.followers ? fmtNum(v.followers) + " подписчиков" : "",
             v.group ? "группа «" + esc(v.group) + "»" : "", "язык: " + (LANG[v.lang] || v.lang)].filter(Boolean).join(" · ")}</div></div>
-        ${v.url ? `<a class="src" href="${esc(v.url)}" target="_blank" rel="noopener">Источник ↗</a>` : ""}
+        ${v.url ? `<a class="src" href="${esc(v.url)}" target="_blank" rel="noopener">${v.platform === "telegram" ? "Открыть в Telegram" : "Открыть источник"} ↗</a>` : ""}
       </div>
       ${v.demo ? `<p class="demostrip">Синтетический пример: аккаунт и текст придуманы командой для показа.</p>` : ""}
       <div class="verdict ${v.level}">
@@ -831,6 +855,7 @@ function renderCase(v, el) {
       </div>
       <dl class="facts">
         <dt>Баллы по направлениям</dt><dd>${Object.entries(v.tracks).map(([t, x]) => `<span class="${x.score ? t : "zero"}">${TRACK_SHORT[t]} ${x.score}</span>`).join(" · ")}</dd>
+        <dt>Источник</dt><dd>${sourceLink(v)}</dd>
         <dt>Город</dt><dd><b>${esc(g.label || "город не указан")}</b>${geoWhy.length ? ": " + geoWhy.map((q) => `${q.src === "network" ? esc(q.text) : "«" + esc(q.text) + "»"} <span class="muted">(${esc(GEO_SRC[q.src] || q.src)})</span>`).join(", ") : !g.city ? ` <span class="muted">нет названия города, района, телефона 7252 или городского аккаунта</span>` : ""}</dd>
       </dl>
       ${v.computed.length ? `<div class="calcs">${v.computed.map((c) => `
@@ -841,15 +866,15 @@ function renderCase(v, el) {
 
     <section class="sec">
       <h3>Публикация ${lgd ? `<span class="lgd">${lgd}</span>` : ""}</h3>
-      ${textSeg && textSeg.text ? `<div class="post">${highlight(textSeg.text, hl(textSeg.i), titles)}</div>` : ""}
-      ${bioSeg ? `<p class="label">Описание профиля</p><div class="post">${highlight(bioSeg.text, hl(bioSeg.i), titles)}</div>` : ""}
+      ${textSeg && textSeg.text ? `<div class="post" data-seg="${textSeg.i}">${highlight(textSeg.text, hl(textSeg.i), titles, textSeg.i)}</div>` : ""}
+      ${bioSeg ? `<p class="label">Описание профиля</p><div class="post" data-seg="${bioSeg.i}">${highlight(bioSeg.text, hl(bioSeg.i), titles, bioSeg.i)}</div>` : ""}
       ${ocrSeg ? `<p class="label">Скриншот и распознанный текст</p>
         <div class="shot"><img src="${imgSrc}" alt="скриншот" data-zoom>
-        <div class="post">${highlight(ocrSeg.text, hl(ocrSeg.i), titles)}</div></div>` : v.image_url ? `<p class="label">Картинка из поста</p>
+        <div class="post" data-seg="${ocrSeg.i}">${highlight(ocrSeg.text, hl(ocrSeg.i), titles, ocrSeg.i)}</div></div>` : v.image_url ? `<p class="label">Картинка из поста</p>
         <div class="shot"><img src="${imgSrc}" alt="картинка из поста" data-zoom>
         <div class="post muted">${v.ocr_pending ? "Текст на картинке ещё распознаётся, разбор обновится сам." : "Текста на картинке не нашлось."}</div></div>` : ""}
       ${asr.length ? `<p class="label">Расшифровка эфира</p><div class="post asr">${asr.map((s) => `
-        <div class="tr"><span class="t">${srcInfo(s).t.replace("эфир ", "")}</span><div>${highlight(s.text, hl(s.i), titles)}</div></div>`).join("")}</div>` : ""}
+        <div class="tr" data-seg="${s.i}"><span class="t">${srcInfo(s).t.replace("эфир ", "")}</span><div>${highlight(s.text, hl(s.i), titles, s.i)}</div></div>`).join("")}</div>` : ""}
     </section>
 
     ${v.counters.length ? `<section class="sec"><h3>Снижает риск</h3>${v.counters.map(featHtml).join("")}</section>` : ""}
@@ -869,6 +894,7 @@ function renderCase(v, el) {
       ${v.feedback ? `<span class="fb ${v.feedback.verdict}">${FB[v.feedback.verdict]} в ${esc(v.feedback.at)}</span>` : ""}
     </div>`;
 
+  $$("[data-jump]", el).forEach((btn) => btn.addEventListener("click", () => jumpTo(el, btn.dataset.jump)));
   $$("[data-zoom]", el).forEach((img) => img.addEventListener("click", () => {
     const box = document.createElement("div");
     box.className = "lightbox";

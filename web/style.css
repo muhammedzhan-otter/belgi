@@ -285,6 +285,13 @@ label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ac
 .feat.lottery .quotes li { border-left-color: var(--lottery); } .feat.casino .quotes li { border-left-color: var(--casino); }
 .feat.pyramid .quotes li { border-left-color: var(--pyramid); } .feat.counter .quotes li { border-left-color: var(--ok); }
 .quotes q { quotes: "«" "»"; word-break: break-word; }
+.jump { display: flex; justify-content: space-between; gap: 12px; width: 100%; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
+.jump:hover q { text-decoration: underline; text-decoration-color: var(--line-strong); }
+.jump:hover .src-tag { color: var(--action); }
+mark.ping, .post.ping, .tr.ping { animation: ping 1.6s ease-out; }
+@keyframes ping { 0%, 35% { outline: 3px solid var(--action); outline-offset: 2px; } 100% { outline: 3px solid transparent; outline-offset: 2px; } }
+.srclink { margin-left: auto; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.srclink:hover { text-decoration: underline; }
 .src-tag { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .det { margin-top: 6px; color: var(--text-2); font-size: 13px; }
 .norm { margin-top: 6px; color: var(--muted); font-size: 12.5px; }
@@ -413,6 +420,8 @@ html.sheet { overflow: hidden; }
   .runhead { flex-wrap: wrap; }
   .runhead .btn { width: 100%; }
   .lines .ract, .colact .ract { padding: 10px 0; }
+  .srclink { padding: 8px 0 8px 8px; margin: -8px 0; }
+  .jump { padding: 6px 0; }
   .more summary { padding: 10px 0; }
   label.check { min-height: 44px; }
   .seg button { padding: 10px 10px; flex: 1; }
