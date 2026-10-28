@@ -132,6 +132,7 @@ label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ac
 .defs dt { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
 .defs dd { margin: 0 0 8px; color: var(--text-2); }
 .defs dd b { color: var(--text); font-weight: 600; }
+.defs.plans { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); max-width: 860px; }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
 .sw.lottery { background: var(--lottery); } .sw.casino { background: var(--casino); } .sw.pyramid { background: var(--pyramid); }
 
