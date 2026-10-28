@@ -243,7 +243,9 @@ label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ac
 .who b { font-size: 16px; margin-right: 8px; }
 .who .muted { margin-right: 8px; }
 .sub2 { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
-.src { white-space: nowrap; font-weight: 600; text-decoration: none; font-size: 13px; }
+.src { white-space: nowrap; font-weight: 600; text-decoration: none; font-size: 13px; flex: none; }
+.btn.src { color: var(--action); border-color: var(--action); }
+.btn.src:hover { background: var(--action-soft); }
 .verdict { display: grid; grid-template-columns: auto 1fr; gap: 20px; margin-top: 14px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .vscore b { display: block; font-size: 52px; font-weight: 700; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .vscore span { color: var(--muted); font-size: 12.5px; }
@@ -438,7 +440,8 @@ html.sheet { overflow: hidden; }
   .calcs { flex-direction: column; }
   .calc + .calc { border-left: 0; border-top: 1px solid var(--line); }
   .shot { grid-template-columns: 1fr; }
-  .chead .src { padding: 10px 0 10px 10px; }
+  .chead { flex-direction: column; }
+  .chead .btn.src { width: 100%; }
   .cact { position: static; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 12px; }
   .cact .dec, .cact .fb { grid-column: 1 / -1; }
   .cact .btn { padding: 0 4px; font-size: 13px; white-space: normal; text-align: center; }

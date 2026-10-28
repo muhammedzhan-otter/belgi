@@ -677,7 +677,7 @@ function renderQueue(newIds = []) {
       <div class="ibody">
         <div class="ihead"><b class="lvl">${LEVEL[c.level]}${c.level !== "low" && c.track ? ` · ${TRACK_SHORT[c.track]}` : ""}</b><span class="time">${fmtTime(c.ts)}</span></div>
         <div class="imeta"><span class="acc">${esc(c.account)}</span>${c.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}<span>${tags.map(esc).join(" · ")}</span>
-          ${c.url ? `<a class="srclink" href="${esc(c.url)}" target="_blank" rel="noopener" title="Открыть публикацию в источнике">источник ↗</a>` : ""}</div>
+          ${sourceUrl(c) ? `<a class="srclink" href="${esc(sourceUrl(c))}" target="_blank" rel="noopener" title="${c.url ? "Открыть публикацию в источнике" : "Синтетическая публикация: откроется её запись в демо-ленте"}">источник ↗</a>` : ""}</div>
         <div class="snip">${esc(c.snippet) || `<span class="muted">Пост из одной картинки</span>`}</div>
         ${c.level !== "low" ? `<div class="isigns">${c.chips.map(esc).join(" · ")}</div>` : c.ocr_pending ? `<div class="isigns muted">Картинка ещё не прочитана</div>` : ""}
         ${c.feedback ? `<div class="fb ${c.feedback.verdict}">${FB[c.feedback.verdict]}</div>` : ""}
@@ -774,12 +774,16 @@ function whyLine(v, main) {
   return "Признаков схем не найдено.";
 }
 
-// куда ведёт «источник»: сам пост; у синтетики настоящего адреса нет, у жалоб есть скриншот
+// куда ведёт «источник»: настоящий пост, а у синтетики её запись в демо-ленте (настоящего поста нет)
+function sourceUrl(c) {
+  if (c.url) return c.url;
+  if (c.demo && c.platform !== "manual") return "demo/post.html#" + encodeURIComponent(c.id);
+  return null;
+}
 function sourceLink(v) {
   if (v.url) return `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.url.replace(/^https?:\/\//, ""))} ↗</a>`;
   if (v.platform === "manual") return `<span class="muted">свой текст, ссылки нет</span>`;
-  if (v.demo && v.image_url) return `<a href="${esc(v.image_url)}" target="_blank" rel="noopener">скриншот ${v.platform === "whatsapp" ? "жалобы" : "из публикации"} ↗</a> <span class="muted">(синтетика, адреса поста нет)</span>`;
-  if (v.demo) return `<span class="muted">синтетическая публикация, адреса нет</span>`;
+  if (sourceUrl(v)) return `<a href="${esc(sourceUrl(v))}" target="_blank" rel="noopener">запись в демо-ленте ↗</a> <span class="muted">(синтетика, настоящего поста нет)</span>`;
   return `<span class="muted">адрес не сохранён</span>`;
 }
 // нажатие на цитату признака: прокрутить к этому месту в публикации и подсветить
@@ -841,7 +845,7 @@ function renderCase(v, el) {
           ${v.demo ? `<span class="demo-tag" title="Синтетическая публикация из демо-ленты">демо</span>` : ""}
           <div class="sub2">${[v.platform === "manual" ? "Свой текст" : PLAT_NAME[v.platform] || v.platform, fmtTime(v.ts), v.followers ? fmtNum(v.followers) + " подписчиков" : "",
             v.group ? "группа «" + esc(v.group) + "»" : "", "язык: " + (LANG[v.lang] || v.lang)].filter(Boolean).join(" · ")}</div></div>
-        ${v.url ? `<a class="src" href="${esc(v.url)}" target="_blank" rel="noopener">${v.platform === "telegram" ? "Открыть в Telegram" : "Открыть источник"} ↗</a>` : ""}
+        ${sourceUrl(v) ? `<a class="btn src" href="${esc(sourceUrl(v))}" target="_blank" rel="noopener">${v.url ? (v.platform === "telegram" ? "Открыть в Telegram" : "Открыть источник") : "Источник (демо)"} ↗</a>` : ""}
       </div>
       ${v.demo ? `<p class="demostrip">Синтетический пример: аккаунт и текст придуманы командой для показа.</p>` : ""}
       <div class="verdict ${v.level}">

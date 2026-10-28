@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Источник · демо-лента Белгі</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+  .src-page { max-width: 760px; margin: 0 auto; padding: 24px 16px 40px; }
+  .src-page .card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px 20px; margin-top: 14px; }
+  .src-page h1 { font-size: 20px; margin: 0; }
+  .src-page .who b { font-size: 16px; margin-right: 8px; }
+  .src-page .post { margin-top: 12px; }
+  .src-page img { max-width: 100%; border: 1px solid var(--line); border-radius: 3px; margin-top: 12px; display: block; }
+  .src-page .label { margin-top: 16px; }
+</style>
+</head>
+<body>
+<main class="src-page">
+  <a href="../" class="linkbtn">← Белгі</a>
+  <div id="out"><p class="muted" style="margin-top:14px">Загружаю…</p></div>
+</main>
+<script>
+// Источник для синтетической публикации: её запись в демо-ленте, как её получила система.
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const PLAT = { instagram: "Instagram", telegram: "Telegram", whatsapp: "WhatsApp, жалоба гражданина", tiktok: "TikTok, эфир" };
+const when = (ts) => { const d = new Date(ts); return isNaN(d) ? "" : d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); };
+(async () => {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const out = document.getElementById("out");
+  let feed = [];
+  try { feed = await (await fetch("../py/data/feed.json")).json(); } catch (e) {}
+  const p = feed.find((x) => x.id === id);
+  if (!p) { out.innerHTML = `<div class="card"><b>Публикация не найдена</b><p class="muted">В демо-ленте нет записи «${esc(id)}».</p></div>`; return; }
+  document.title = `${p.account} · источник · демо-лента Белгі`;
+  const img = p.image ? "../data/img/" + p.image.split("/").pop() : "";
+  out.innerHTML = `
+    <p class="demostrip">Синтетическая публикация из демо-ленты Белгі. Аккаунт и текст придуманы командой для показа, настоящего поста нет. Ниже запись в том виде, в каком её получила система.</p>
+    <div class="card">
+      <div class="who"><b>${esc(p.account)}</b>${p.account_name ? `<span class="muted">${esc(p.account_name)}</span>` : ""} <span class="demo-tag">демо</span></div>
+      <div class="sub2">${[PLAT[p.platform] || p.platform, when(p.ts), p.followers ? Number(p.followers).toLocaleString("ru-RU") + " подписчиков" : "", p.group ? "группа «" + esc(p.group) + "»" : ""].filter(Boolean).join(" · ")}</div>
+      ${p.text ? `<div class="post">${esc(p.text)}</div>` : ""}
+      ${p.bio ? `<p class="label">Описание профиля</p><div class="post">${esc(p.bio)}</div>` : ""}
+      ${img ? `<p class="label">Скриншот</p><a href="${img}" target="_blank" rel="noopener"><img src="${img}" alt="скриншот"></a>` : ""}
+      ${(p.transcript || []).length ? `<p class="label">Расшифровка эфира</p><div class="post asr">${p.transcript.map((t) =>
+        `<div class="tr"><span class="t">${Math.floor((t.t || 0) / 60)}:${String(Math.floor((t.t || 0) % 60)).padStart(2, "0")}</span><div>${esc(t.text)}</div></div>`).join("")}</div>` : ""}
+    </div>`;
+})();
+</script>
+</body>
+</html>
